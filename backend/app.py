@@ -124,21 +124,46 @@ async def admin_data(limit: int = 100, authorization: str = None):
 async def admin_stats():
     return get_admin_stats()
 
-# Servir archivos estáticos del frontend
-FRONTEND_DIR = BASE_DIR / "frontend"
-if FRONTEND_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+# --- SERVIR ARCHIVOS ESTÁTICOS Y PÁGINAS DEL FRONTEND ---
+def get_frontend_file(filename: str) -> Path:
+    candidates = [
+        BASE_DIR / "frontend" / filename,
+        Path.cwd() / "frontend" / filename,
+        Path(__file__).resolve().parent.parent / "frontend" / filename,
+        Path(__file__).resolve().parent / "frontend" / filename,
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
 
-    @app.get("/")
-    async def serve_index():
-        return FileResponse(FRONTEND_DIR / "index.html")
+# Montar directorio estático
+static_candidates = [
+    BASE_DIR / "frontend",
+    Path.cwd() / "frontend",
+    Path(__file__).resolve().parent.parent / "frontend"
+]
+for sc in static_candidates:
+    if sc.exists():
+        app.mount("/static", StaticFiles(directory=str(sc)), name="static")
+        break
 
-    @app.get("/admin")
-    async def serve_admin():
-        return FileResponse(FRONTEND_DIR / "admin.html")
+@app.get("/")
+async def serve_index():
+    path = get_frontend_file("index.html")
+    return FileResponse(path)
+
+@app.get("/admin")
+@app.get("/admin/")
+async def serve_admin():
+    path = get_frontend_file("admin.html")
+    if path.exists():
+        return FileResponse(path)
+    raise HTTPException(status_code=404, detail=f"admin.html no encontrado en el servidor")
 
 if __name__ == "__main__":
     import uvicorn
     print(f"🚀 GangaCheck.es corriendo en http://localhost:{PORT}")
     uvicorn.run("app:app", host=HOST, port=PORT, reload=True)
+
 
