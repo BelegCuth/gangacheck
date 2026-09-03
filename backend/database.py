@@ -297,3 +297,39 @@ def get_recent_scans(limit: int = 10) -> List[Dict[str, Any]]:
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def get_all_scans_admin(limit: int = 100) -> List[Dict[str, Any]]:
+    """Devuelve todos los análisis con campos completos para la tabla del panel de administración."""
+    if supabase_client:
+        try:
+            res = supabase_client.table("scans").select("*").order("id", desc=True).limit(limit).execute()
+            if res.data:
+                return res.data
+        except Exception as e:
+            print(f"[Supabase] Error al leer scans admin: {e}")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM scans ORDER BY id DESC LIMIT ?", (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_admin_stats() -> Dict[str, Any]:
+    """Calcula métricas clave para el panel de administración."""
+    scans = get_all_scans_admin(limit=500)
+    total_items = len(scans)
+    
+    bargains_count = sum(1 for s in scans if float(s.get("score", 0)) >= 7.5)
+    scams_count = sum(1 for s in scans if s.get("risk_level") == "ALTO" or "Estafa" in str(s.get("verdict", "")))
+    total_savings = sum(max(0.0, float(s.get("savings", 0))) for s in scans)
+    avg_score = round(sum(float(s.get("score", 0)) for s in scans) / total_items, 1) if total_items > 0 else 0.0
+
+    return {
+        "total_scans": total_items,
+        "bargains_count": bargains_count,
+        "scams_flagged": scams_count,
+        "total_savings": round(total_savings, 2),
+        "average_score": avg_score
+    }
+

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | GangaCheck.es</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* Estilos específicos del Panel Admin */
+        .admin-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .admin-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-badge {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--accent-flame);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .admin-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.1);
+            color: #F87171;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Pantalla de Login */
+        .login-wrapper {
+            max-width: 420px;
+            margin: 80px auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 36px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .login-wrapper h2 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+
+        .login-wrapper p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: var(--accent-green);
+        }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #F87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        /* Stats Cards */
+        .admin-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin: 32px 0 24px;
+        }
+
+        @media (max-width: 860px) {
+            .admin-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* Toolbar de Filtros */
+        .toolbar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-filters {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+
+        .search-input-box {
+            flex: 1;
+            min-width: 240px;
+            position: relative;
+        }
+
+        .search-input-box input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .search-input-box input:focus {
+            border-color: var(--accent-green);
+        }
+
+        .filter-select {
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .filter-select option {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 9px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Tabla de Datos */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.88rem;
+        }
+
+        .admin-table th {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 14px 16px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .admin-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .admin-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .score-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            white-space: nowrap;
+        }
+
+        .item-title-cell {
+            max-width: 260px;
+        }
+
+        .item-title-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .item-title-link:hover {
+            color: var(--accent-green);
+        }
+
+        .item-subtext {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .price-current {
+            font-weight: 800;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .price-bench {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .savings-pos {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .savings-neg {
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        .risk-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
+            text-transform: uppercase;
+        }
+
+        .risk-bajo { background: rgba(16, 185, 129, 0.15); color: #34D399; }
+        .risk-moderado { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+        .risk-alto { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+        .btn-external {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.8rem;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .btn-external:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .table-footer {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            border-top: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-bg"></div>
+
+    <!-- Header Admin -->
+    <header class="admin-nav container">
+        <div class="admin-brand">
+            <div class="logo">
+                <span class="logo-badge">🔥</span>
+                <span class="logo-text">Ganga<span>Check</span><span class="tld">.es</span></span>
+            </div>
+            <span class="admin-badge">Admin Panel</span>
+        </div>
+        <div class="admin-actions">
+            <a href="/" class="btn-ghost" target="_blank">↗ Ver Web Pública</a>
+            <button id="btn-logout" class="btn-logout hidden">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <!-- Vista 1: Login Form (Si no está logueado) -->
+        <section id="login-section" class="login-wrapper">
+            <h2>Acceso Privado</h2>
+            <p>Introduce las credenciales para consultar la base de datos de GangaCheck.</p>
+            
+            <div id="login-error" class="login-error"></div>
+
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" required autocomplete="username" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" required autocomplete="current-password" placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-submit" style="width: 100%; margin-top: 8px;">
+                    Entrar al Panel
+                </button>
+            </form>
+        </section>
+
+        <!-- Vista 2: Dashboard Admin (Si está logueado) -->
+        <section id="dashboard-section" class="hidden" style="margin-bottom: 60px;">
+            
+            <!-- Stats -->
+            <div class="admin-stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Total Productos en BBDD</div>
+                    <div id="stat-total" class="stat-number">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">🔥 Chollos Detectados</div>
+                    <div id="stat-chollos" class="stat-number" style="color: var(--accent-green);">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">⚠️ Posibles Estafas</div>
+                    <div id="stat-estafas" class="stat-number" style="color: var(--accent-red);">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">💰 Ahorro Acumulado</div>
+                    <div id="stat-ahorro" class="stat-number" style="color: var(--accent-flame);">0 €</div>
+                </div>
+            </div>
+
+            <!-- Toolbar de Filtros y Búsqueda -->
+            <div class="toolbar-card">
+                <div class="toolbar-filters">
+                    <div class="search-input-box">
+                        <input type="text" id="search-input" placeholder="🔍 Buscar por título, modelo o vendedor...">
+                    </div>
+                    
+                    <select id="filter-verdict" class="filter-select">
+                        <option value="all">Todos los veredictos</option>
+                        <option value="chollo">🔥 Solo Chollos (>= 7.5)</option>
+                        <option value="justo">🟡 Precio Justo (5.0 - 7.4)</option>
+                        <option value="caro">🔴 Caro / Sobreprecio (< 5.0)</option>
+                        <option value="estafa">⚠️ Posible Estafa / Riesgo Alto</option>
+                    </select>
+
+                    <select id="filter-sort" class="filter-select">
+                        <option value="date-desc">Más recientes primero</option>
+                        <option value="score-desc">Mayor nota (10 -> 0)</option>
+                        <option value="score-asc">Menor nota (0 -> 10)</option>
+                        <option value="price-asc">Precio: más barato</option>
+                        <option value="price-desc">Precio: más caro</option>
+                        <option value="savings-desc">Mayor ahorro (€)</option>
+                    </select>
+                </div>
+
+                <div class="toolbar-buttons">
+                    <button id="btn-refresh" class="btn-action" title="Recargar datos">
+                        🔄 Refrescar
+                    </button>
+                    <button id="btn-export-csv" class="btn-action" title="Exportar a CSV">
+                        📥 Exportar CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de Datos -->
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Nota</th>
+                                <th>Producto / Título</th>
+                                <th>Precio</th>
+                                <th>Mediana BBDD</th>
+                                <th>Ahorro Estimado</th>
+                                <th>Vendedor</th>
+                                <th>Envíos</th>
+                                <th>Riesgo</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body">
+                            <!-- Inyectado dinámicamente con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer">
+                    <span id="table-count-label">Mostrando 0 productos</span>
+                    <span>Conexión: <strong>PostgreSQL (Supabase Cloud)</strong></span>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="/static/admin.js"></script>
+</body>
+</html>

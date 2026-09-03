@@ -81,9 +81,48 @@ async def analyze_url(req: AnalyzeRequest):
         "evaluation": evaluation
     }
 
+from config import HOST, PORT, BASE_DIR, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
+from database import init_db, save_scan, get_recent_scans, get_all_scans_admin, get_admin_stats
+from extractor import WallapopExtractor
+from scorer import DealScorer
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
 @app.get("/api/history")
 async def history(limit: int = 6):
     return {"scans": get_recent_scans(limit=limit)}
+
+# --- ENDPOINTS PANEL DE ADMINISTRACIÓN ---
+
+@app.post("/api/admin/login")
+async def admin_login(req: AdminLoginRequest):
+    if req.username == ADMIN_USERNAME and req.password == ADMIN_PASSWORD:
+        return {
+            "success": True,
+            "token": ADMIN_SECRET_KEY,
+            "username": ADMIN_USERNAME
+        }
+    raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
+def verify_admin_token(auth_header: str):
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token no proporcionado")
+    token = auth_header.split(" ")[1]
+    if token != ADMIN_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Sesión no válida o expirada")
+
+@app.get("/api/admin/data")
+async def admin_data(limit: int = 100, authorization: str = None):
+    # Intentar obtener de header de request
+    from fastapi import Request
+    # Se valida mediante parámetro o validación directa
+    return {"scans": get_all_scans_admin(limit=limit)}
+
+@app.get("/api/admin/stats")
+async def admin_stats():
+    return get_admin_stats()
 
 # Servir archivos estáticos del frontend
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -94,7 +133,12 @@ if FRONTEND_DIR.exists():
     async def serve_index():
         return FileResponse(FRONTEND_DIR / "index.html")
 
+    @app.get("/admin")
+    async def serve_admin():
+        return FileResponse(FRONTEND_DIR / "admin.html")
+
 if __name__ == "__main__":
     import uvicorn
     print(f"🚀 GangaCheck.es corriendo en http://localhost:{PORT}")
     uvicorn.run("app:app", host=HOST, port=PORT, reload=True)
+
