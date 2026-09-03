@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GangaCheck.es | El Detector Inteligente de Chollos</title>
+    <meta name="description" content="Pega cualquier enlace de Wallapop o segunda mano y averigua al instante si es un verdadero chollo o una estafa con una valoración del 0 al 10.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="glow-bg"></div>
+
+    <header class="header">
+        <div class="container nav-container">
+            <div class="logo">
+                <span class="logo-badge">🔥</span>
+                <span class="logo-text">Ganga<span>Check</span><span class="tld">.es</span></span>
+            </div>
+            <div class="header-tagline">Tasador y Detector de Gangas</div>
+        </div>
+    </header>
+
+    <main class="main container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="badge-pill">
+                <span class="dot pulse"></span> Escáner en tiempo real de segunda mano
+            </div>
+            <h1 class="hero-title">
+                ¿Es un chollo o te la están <span class="highlight-gradient">colando</span>?
+            </h1>
+            <p class="hero-subtitle">
+                Pega el enlace de un anuncio de Wallapop. Analizamos el precio frente a la mediana real de mercado, auditamos el perfil del vendedor y te damos una nota del <strong>0 al 10</strong>.
+            </p>
+
+            <!-- Search Form -->
+            <form id="scan-form" class="scan-form">
+                <div class="input-wrapper">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                    <input 
+                        type="text" 
+                        id="url-input" 
+                        placeholder="Pega aquí el enlace del anuncio (ej: https://es.wallapop.com/item/...)" 
+                        required
+                        autocomplete="off"
+                    >
+                    <button type="button" id="paste-btn" class="btn-paste" title="Pegar del portapapeles">
+                        Pegar
+                    </button>
+                    <button type="submit" id="submit-btn" class="btn-submit">
+                        <span class="btn-text">Escanear</span>
+                        <span class="btn-loader hidden"></span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Platform support -->
+            <div class="platforms-bar">
+                <span class="platforms-label">Compatible con:</span>
+                <span class="platform-tag active"><span class="status-dot"></span> Wallapop</span>
+                <span class="platform-tag coming-soon">Vinted (Próximamente)</span>
+                <span class="platform-tag coming-soon">Milanuncios (Próximamente)</span>
+            </div>
+
+            <!-- Demos rápidas -->
+            <div class="demo-pills">
+                <span class="demo-label">Probar ejemplos listos:</span>
+                <button class="demo-chip" data-url="https://es.wallapop.com/item/test-ps5-chollo-270">
+                    🔥 PS5 Chollo (270 €)
+                </button>
+                <button class="demo-chip" data-url="https://es.wallapop.com/item/test-iphone-scam">
+                    ⚠️ iPhone 15 (Alerta Estafa)
+                </button>
+                <button class="demo-chip" data-url="https://es.wallapop.com/item/test-switch-caro">
+                    🟠 Switch (Precio Alto)
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loading-card" class="loading-card hidden">
+            <div class="scanner-laser"></div>
+            <div class="spinner"></div>
+            <h3>Escaneando anuncio y consultando precios de mercado...</h3>
+            <p>Calculando mediana histórica y verificando reputación del vendedor</p>
+        </div>
+
+        <!-- Result Section -->
+        <section id="result-section" class="result-section hidden">
+            <div class="result-card">
+                
+                <!-- Card Header -->
+                <div class="result-header">
+                    <div class="product-meta">
+                        <span id="res-category" class="category-badge">Consolas</span>
+                        <h2 id="res-title" class="res-product-title">Título del Producto</h2>
+                        <div class="seller-inline">
+                            <span id="res-seller-name">Vendedor</span> · 
+                            <span id="res-seller-stars">⭐ 4.9</span> 
+                            (<span id="res-seller-reviews">32</span> valoraciones) · 
+                            <span id="res-shipping-status">📦 Envíos activos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Analysis Row -->
+                <div class="analysis-grid">
+                    
+                    <!-- Tacómetro / Score Meter -->
+                    <div class="score-box">
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" viewBox="0 0 200 120">
+                                <!-- Background Arc -->
+                                <path d="M 20 105 A 80 80 0 0 1 180 105" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="18" stroke-linecap="round"/>
+                                <!-- Value Arc -->
+                                <path id="gauge-arc" d="M 20 105 A 80 80 0 0 1 180 105" fill="none" stroke="url(#gaugeGradient)" stroke-width="18" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
+                                <defs>
+                                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#ef4444" />
+                                        <stop offset="50%" stop-color="#f59e0b" />
+                                        <stop offset="100%" stop-color="#10b981" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="gauge-value-wrapper">
+                                <span id="res-score-number" class="score-number">0.0</span>
+                                <span class="score-max">/ 10</span>
+                            </div>
+                        </div>
+                        <div id="res-verdict-badge" class="verdict-badge">🔥 ¡Chollo Épico!</div>
+                    </div>
+
+                    <!-- Metrics Stats -->
+                    <div class="metrics-box">
+                        <div class="metric-card">
+                            <div class="metric-label">Precio del Anuncio</div>
+                            <div id="res-item-price" class="metric-value price-item">0 €</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Mediana de Mercado</div>
+                            <div id="res-market-price" class="metric-value price-market">0 €</div>
+                        </div>
+                        <div class="metric-card highlight-card">
+                            <div class="metric-label">Diferencia / Ahorro</div>
+                            <div id="res-savings" class="metric-value price-savings">+0 € (0%)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Alerts (Si existen) -->
+                <div id="risk-alert-box" class="risk-alert-box hidden">
+                    <div class="risk-title">⚠️ Banderas Rojas Detectadas:</div>
+                    <ul id="risk-list" class="risk-list"></ul>
+                </div>
+
+                <!-- Pros & Cons Grid -->
+                <div class="details-grid">
+                    <div class="detail-column pros-column">
+                        <h4 class="col-title"><span class="col-icon">✅</span> Aspectos Positivos</h4>
+                        <ul id="res-pros-list" class="check-list"></ul>
+                    </div>
+                    <div class="detail-column cons-column">
+                        <h4 class="col-title"><span class="col-icon">⚠️</span> A Tener en Cuenta</h4>
+                        <ul id="res-cons-list" class="warning-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Affiliate / Alternative Recommendation -->
+                <div id="affiliate-box" class="affiliate-box hidden">
+                    <div class="affiliate-content">
+                        <div class="affiliate-badge">Alternativa Segura con Garantía</div>
+                        <h4 id="affiliate-title">¿Prefieres no arriesgarte?</h4>
+                        <p id="affiliate-desc">Encuentra este mismo producto reacondicionado certificado con 1 año de garantía y devolución gratuita.</p>
+                    </div>
+                    <a href="https://www.amazon.es" target="_blank" rel="noopener noreferrer" class="btn-affiliate" id="affiliate-btn">
+                        Ver alternativa en Amazon
+                    </a>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Recent Community Scans -->
+        <section class="recent-scans-section">
+            <h3 class="section-title">Últimos análisis de la comunidad</h3>
+            <div id="recent-scans-grid" class="recent-grid">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <p><strong>GangaCheck.es</strong> · El comparador independiente de precios de segunda mano.</p>
+            <p class="footer-disclaimer">Este sitio es una herramienta analítica independiente y no está afiliada, patrocinada ni respaldada por Wallapop, Vinted ni Milanuncios.</p>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
