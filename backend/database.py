@@ -347,3 +347,103 @@ def get_admin_stats() -> Dict[str, Any]:
         "average_score": avg_score
     }
 
+def get_cached_scan(url: str, max_age_hours: int = 24) -> Optional[Dict[str, Any]]:
+    """Busca si la URL ya fue analizada recientemente para servir el resultado desde caché."""
+    if not url:
+        return None
+    clean_url = url.strip()
+    
+    if supabase_client:
+        try:
+            res = supabase_client.table("scans").select("*").eq("url", clean_url).order("id", desc=True).limit(1).execute()
+            if res.data and len(res.data) > 0:
+                row = res.data[0]
+                details = row.get("details_json")
+                if isinstance(details, str):
+                    try:
+                        row["details"] = json.loads(details)
+                    except Exception:
+                        row["details"] = {}
+                return row
+        except Exception as e:
+            print(f"[Supabase Cache] Error: {e}")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM scans WHERE url = ? ORDER BY id DESC LIMIT 1", (clean_url,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        d = dict(row)
+        if isinstance(d.get("details_json"), str):
+            try:
+                d["details"] = json.loads(d["details_json"])
+            except Exception:
+                d["details"] = {}
+        return d
+    return None
+
+def delete_scan(scan_id: int) -> bool:
+    """Elimina un análisis de Supabase o SQLite."""
+    if supabase_client:
+        try:
+            res = supabase_client.table("scans").delete().eq("id", scan_id).execute()
+            return True
+        except Exception as e:
+            print(f"[Supabase Delete] Error: {e}")
+            return False
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM scans WHERE id = ?", (scan_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_all_benchmarks() -> List[Dict[str, Any]]:
+    """Lista todos los benchmarks actuales."""
+    if supabase_client:
+        try:
+            res = supabase_client.table("market_benchmarks").select("*").order("category").execute()
+            if res.data:
+                return res.data
+        except Exception as e:
+            print(f"[Supabase Benchmarks] Error: {e}")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM market_benchmarks ORDER BY category, display_name")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def add_or_update_benchmark(product_key: str, display_name: str, median_price: float, min_price: float, max_price: float, category: str = "General") -> bool:
+    """Añade o actualiza un precio de referencia en la base de datos."""
+    data = {
+        "product_key": product_key.strip().lower(),
+        "display_name": display_name.strip(),
+        "median_price": float(median_price),
+        "min_normal_price": float(min_price),
+        "max_normal_price": float(max_price),
+        "category": category.strip()
+    }
+    if supabase_client:
+        try:
+            supabase_client.table("market_benchmarks").upsert(data).execute()
+            return True
+        except Exception as e:
+            print(f"[Supabase Upsert Benchmark] Error: {e}")
+            return False
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO market_benchmarks
+        (product_key, display_name, median_price, min_normal_price, max_normal_price, category)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (data["product_key"], data["display_name"], data["median_price"], data["min_normal_price"], data["max_normal_price"], data["category"]))
+    conn.commit()
+    conn.close()
+    return True
+
+

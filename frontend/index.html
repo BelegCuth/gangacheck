@@ -3,8 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GangaCheck.es | El Detector Inteligente de Chollos</title>
-    <meta name="description" content="Pega cualquier enlace de Wallapop o segunda mano y averigua al instante si es un verdadero chollo o una estafa con una valoración del 0 al 10.">
+    <title>GangaCheck.es | Detector y Tasador de Chollos de Segunda Mano</title>
+    <meta name="description" content="Tasa anuncios de Wallapop, Vinted y Milanuncios con IA. Compara con la mediana real de mercado y detecta estafas en segundos.">
+    <!-- OpenGraph / WhatsApp Preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gangacheck.onrender.com/">
+    <meta property="og:title" content="GangaCheck.es | ¿Es un chollo o te la están colando?">
+    <meta property="og:description" content="Compara precios de segunda mano frente a la mediana real de mercado, audita al vendedor y obtén una nota del 0 al 10.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1200&q=80">
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="GangaCheck.es - Tasador de Segunda Mano">
+    <meta name="twitter:description" content="Tasa anuncios de Wallapop, Vinted y Milanuncios y detecta chollos al instante.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -99,7 +109,7 @@
             <div class="result-card">
                 
                 <!-- Card Header -->
-                <div class="result-header">
+                <div class="result-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                     <div class="product-meta">
                         <span id="res-category" class="category-badge">Consolas</span>
                         <h2 id="res-title" class="res-product-title">Título del Producto</h2>
@@ -110,6 +120,10 @@
                             <span id="res-shipping-status">📦 Envíos activos</span>
                         </div>
                     </div>
+                    <button id="btn-share-result" class="btn-share" title="Compartir o copiar resultado">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        Compartir / Copiar
+                    </button>
                 </div>
 
                 <!-- Main Analysis Row -->
@@ -137,6 +151,37 @@
                             </div>
                         </div>
                         <div id="res-verdict-badge" class="verdict-badge">🔥 ¡Chollo Épico!</div>
+
+                        <!-- Sub-scores Breakdown -->
+                        <div class="subscores-box">
+                            <div class="subscore-item">
+                                <div class="subscore-header">
+                                    <span>💰 Descuento vs Mercado</span>
+                                    <span id="sub-price-val" class="subscore-val">0.0</span>
+                                </div>
+                                <div class="subscore-bar-bg">
+                                    <div id="sub-price-bar" class="subscore-bar-fill" style="background: #10B981;"></div>
+                                </div>
+                            </div>
+                            <div class="subscore-item">
+                                <div class="subscore-header">
+                                    <span>🛡️ Fiabilidad Vendedor</span>
+                                    <span id="sub-seller-val" class="subscore-val">0.0</span>
+                                </div>
+                                <div class="subscore-bar-bg">
+                                    <div id="sub-seller-bar" class="subscore-bar-fill" style="background: #06B6D4;"></div>
+                                </div>
+                            </div>
+                            <div class="subscore-item">
+                                <div class="subscore-header">
+                                    <span>📦 Estado y Accesorios</span>
+                                    <span id="sub-cond-val" class="subscore-val">0.0</span>
+                                </div>
+                                <div class="subscore-bar-bg">
+                                    <div id="sub-cond-bar" class="subscore-bar-fill" style="background: #F59E0B;"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Metrics Stats -->
@@ -191,12 +236,24 @@
 
         <!-- Recent Community Scans -->
         <section class="recent-scans-section">
-            <h3 class="section-title">Últimos análisis de la comunidad</h3>
+            <div class="history-header">
+                <h3 class="section-title" style="margin-bottom: 0;">Últimos análisis de la comunidad</h3>
+                <div class="history-filters">
+                    <button class="history-chip active" data-filter="all">Todos</button>
+                    <button class="history-chip" data-filter="chollos">🔥 Chollos</button>
+                    <button class="history-chip" data-filter="wallapop">Wallapop</button>
+                    <button class="history-chip" data-filter="vinted">Vinted</button>
+                    <button class="history-chip" data-filter="milanuncios">Milanuncios</button>
+                </div>
+            </div>
             <div id="recent-scans-grid" class="recent-grid">
                 <!-- Se inyecta dinámicamente -->
             </div>
         </section>
     </main>
+
+    <!-- Toast de Notificación -->
+    <div id="toast" class="toast-notification">¡Enlace de análisis copiado al portapapeles!</div>
 
     <footer class="footer">
         <div class="container footer-content">

@@ -474,6 +474,13 @@
                         <input type="text" id="search-input" placeholder="🔍 Buscar por título, modelo o vendedor...">
                     </div>
                     
+                    <select id="filter-platform" class="filter-select">
+                        <option value="all">Todas las plataformas</option>
+                        <option value="wallapop">Wallapop</option>
+                        <option value="vinted">Vinted</option>
+                        <option value="milanuncios">Milanuncios</option>
+                    </select>
+
                     <select id="filter-verdict" class="filter-select">
                         <option value="all">Todos los veredictos</option>
                         <option value="chollo">🔥 Solo Chollos (>= 7.5)</option>
@@ -493,6 +500,9 @@
                 </div>
 
                 <div class="toolbar-buttons">
+                    <button id="btn-open-benchmarks" class="btn-action" title="Gestionar Precios de Mercado">
+                        🏷️ Precios Mercado
+                    </button>
                     <button id="btn-refresh" class="btn-action" title="Recargar datos">
                         🔄 Refrescar
                     </button>
@@ -531,6 +541,52 @@
             </div>
 
         </section>
+
+        <!-- Modal Benchmarks -->
+        <div id="modal-benchmarks" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 800;">🏷️ Precios de Referencia (Benchmarks)</h3>
+                    <button id="btn-close-benchmarks" style="background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer;">&times;</button>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    Añade o consulta las medianas de precio que usa GangaCheck para evaluar chollos.
+                </p>
+
+                <!-- Formulario Nuevo Benchmark -->
+                <form id="benchmark-form" style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Nombre Mostrado</label>
+                        <input type="text" id="bm-display" required placeholder="Ej: PlayStation 5 Pro 2TB" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Clave Única (slug)</label>
+                        <input type="text" id="bm-key" required placeholder="ps5_pro" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Categoría</label>
+                        <input type="text" id="bm-cat" required placeholder="Consolas" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Precio Mediana (€)</label>
+                        <input type="number" step="0.5" id="bm-median" required placeholder="680" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; font-size: 0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Rango Mínimo (€)</label>
+                        <input type="number" step="0.5" id="bm-min" required placeholder="600" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: #fff; font-size: 0.85rem;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <button type="submit" class="btn-submit" style="width: 100%; padding: 9px; font-size: 0.85rem;">Guardar Modelo en Supabase</button>
+                    </div>
+                </form>
+
+                <!-- Lista de Benchmarks actuales -->
+                <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 8px;">Modelos Registrados:</h4>
+                <div id="benchmarks-list" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px;">
+                    <!-- Se inyecta dinámicamente -->
+                </div>
+            </div>
+        </div>
 
     </main>
 

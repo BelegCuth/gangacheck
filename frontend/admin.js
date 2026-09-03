@@ -14,10 +14,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Filter Elements
     const searchInput = document.getElementById("search-input");
+    const filterPlatform = document.getElementById("filter-platform");
     const filterVerdict = document.getElementById("filter-verdict");
     const filterSort = document.getElementById("filter-sort");
     const btnRefresh = document.getElementById("btn-refresh");
     const btnExportCsv = document.getElementById("btn-export-csv");
+
+    // Modal Benchmarks
+    const modalBenchmarks = document.getElementById("modal-benchmarks");
+    const btnOpenBenchmarks = document.getElementById("btn-open-benchmarks");
+    const btnCloseBenchmarks = document.getElementById("btn-close-benchmarks");
+    const benchmarkForm = document.getElementById("benchmark-form");
+    const benchmarksList = document.getElementById("benchmarks-list");
 
     // Table
     const tableBody = document.getElementById("admin-table-body");
@@ -93,10 +101,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 statChollos.textContent = stats.bargains_count;
                 statEstafas.textContent = stats.scams_flagged;
                 statAhorro.textContent = `${stats.total_savings.toFixed(0)} €`;
+            } else if (statsRes.status === 401 || statsRes.status === 403) {
+                sessionStorage.removeItem("admin_token");
+                checkAuth();
+                return;
             }
 
             // Cargar listado completo de productos
-            const dataRes = await fetch("/api/admin/data?limit=200", {
+            const dataRes = await fetch("/api/admin/data?limit=300", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (dataRes.ok) {
@@ -112,11 +124,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // 5. Aplicar filtros y ordenación
     function applyFilters() {
         const query = searchInput.value.toLowerCase().trim();
+        const platform = filterPlatform ? filterPlatform.value : "all";
         const verdict = filterVerdict.value;
         const sort = filterSort.value;
 
         // Filtrado
         filteredScans = rawScans.filter(item => {
+            // Filtro de plataforma
+            if (platform !== "all") {
+                const itemPlat = (item.platform || "wallapop").toLowerCase();
+                if (itemPlat !== platform) return false;
+            }
+
             // Búsqueda de texto
             const matchQuery = !query || 
                 (item.title && item.title.toLowerCase().includes(query)) ||
@@ -151,7 +170,33 @@ document.addEventListener("DOMContentLoaded", () => {
         renderTable();
     }
 
-    // 6. Renderizar tabla en pantalla
+    // 6. Eliminar producto de Supabase
+    window.deleteScan = async function(id, title) {
+        if (!confirm(`¿Estás seguro de eliminar este registro de la base de datos?\n"${title}"`)) {
+            return;
+        }
+
+        const token = sessionStorage.getItem("admin_token");
+        try {
+            const res = await fetch(`/api/admin/scan/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                rawScans = rawScans.filter(s => s.id !== id);
+                applyFilters();
+                // Actualizar contador total
+                statTotal.textContent = rawScans.length;
+            } else {
+                alert("No se pudo eliminar el registro.");
+            }
+        } catch (e) {
+            alert("Error de conexión al eliminar.");
+        }
+    };
+
+    // 7. Renderizar tabla en pantalla
     function renderTable() {
         tableBody.innerHTML = "";
         tableCountLabel.textContent = `Mostrando ${filteredScans.length} de ${rawScans.length} productos`;
@@ -191,6 +236,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Formato de Riesgo
             const riskClass = (item.risk_level || "BAJO").toLowerCase();
+            const platformName = (item.platform || "wallapop").toUpperCase();
+
+            const safeTitle = (item.title || "").replace(/'/g, "\\'");
 
             tr.innerHTML = `
                 <td>
@@ -202,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <a href="${item.url || '#'}" target="_blank" class="item-title-link" title="${item.title}">
                         ${item.title}
                     </a>
-                    <span class="item-subtext">📦 ${item.normalized_product || 'General'} · ${item.platform.toUpperCase()}</span>
+                    <span class="item-subtext">📦 ${item.normalized_product || 'General'} · <strong>${platformName}</strong></span>
                 </td>
                 <td>
                     <div class="price-current">${item.price.toFixed(0)} €</div>
@@ -221,10 +269,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>
                     <span class="risk-badge risk-${riskClass}">${item.risk_level || 'NORMAL'}</span>
                 </td>
-                <td>
-                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn-external">
-                        ↗ Ver Anuncio
+                <td style="white-space: nowrap;">
+                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn-external" title="Abrir anuncio original">
+                        ↗ Ver
                     </a>
+                    <button onclick="deleteScan(${item.id}, '${safeTitle}')" class="btn-delete" title="Eliminar de la base de datos">
+                        🗑️
+                    </button>
                 </td>
             `;
 
@@ -232,13 +283,14 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 7. Eventos de los filtros
+    // 8. Eventos de los filtros
     searchInput.addEventListener("input", applyFilters);
+    if (filterPlatform) filterPlatform.addEventListener("change", applyFilters);
     filterVerdict.addEventListener("change", applyFilters);
     filterSort.addEventListener("change", applyFilters);
     btnRefresh.addEventListener("click", loadDashboard);
 
-    // 8. Exportar a archivo CSV descargable
+    // 9. Exportar a CSV
     btnExportCsv.addEventListener("click", () => {
         if (filteredScans.length === 0) {
             alert("No hay datos para exportar con los filtros actuales.");
@@ -270,4 +322,81 @@ document.addEventListener("DOMContentLoaded", () => {
         link.click();
         document.body.removeChild(link);
     });
+
+    // 10. Modal de Benchmarks
+    if (btnOpenBenchmarks) {
+        btnOpenBenchmarks.addEventListener("click", () => {
+            modalBenchmarks.classList.remove("hidden");
+            loadBenchmarks();
+        });
+    }
+
+    if (btnCloseBenchmarks) {
+        btnCloseBenchmarks.addEventListener("click", () => {
+            modalBenchmarks.classList.add("hidden");
+        });
+    }
+
+    async function loadBenchmarks() {
+        const token = sessionStorage.getItem("admin_token");
+        try {
+            const res = await fetch("/api/admin/benchmarks", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const list = data.benchmarks || [];
+                benchmarksList.innerHTML = "";
+                list.forEach(b => {
+                    const row = document.createElement("div");
+                    row.style.padding = "6px 8px";
+                    row.style.borderBottom = "1px solid rgba(255,255,255,0.06)";
+                    row.style.display = "flex";
+                    row.style.justifyContent = "space-between";
+                    row.innerHTML = `
+                        <span><strong>${b.display_name}</strong> <span style="color:var(--text-muted);">(${b.category})</span></span>
+                        <span style="color:var(--accent-green); font-weight:700;">${b.median_price} €</span>
+                    `;
+                    benchmarksList.appendChild(row);
+                });
+            }
+        } catch (e) {
+            benchmarksList.innerHTML = "<p style='color:var(--accent-red);'>Error al cargar benchmarks</p>";
+        }
+    }
+
+    if (benchmarkForm) {
+        benchmarkForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const token = sessionStorage.getItem("admin_token");
+            const newBm = {
+                display_name: document.getElementById("bm-display").value.trim(),
+                product_key: document.getElementById("bm-key").value.trim(),
+                category: document.getElementById("bm-cat").value.trim(),
+                median_price: parseFloat(document.getElementById("bm-median").value),
+                min_normal_price: parseFloat(document.getElementById("bm-min").value),
+                max_normal_price: parseFloat(document.getElementById("bm-median").value) * 1.25
+            };
+
+            try {
+                const res = await fetch("/api/admin/benchmarks", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify(newBm)
+                });
+                if (res.ok) {
+                    alert("¡Modelo guardado correctamente en Supabase!");
+                    benchmarkForm.reset();
+                    loadBenchmarks();
+                } else {
+                    alert("No se pudo guardar el modelo.");
+                }
+            } catch (err) {
+                alert("Error de conexión.");
+            }
+        });
+    }
 });

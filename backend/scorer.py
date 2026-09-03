@@ -167,6 +167,14 @@ class DealScorer:
                 "tag": "Garantía Oficial"
             }
 
+        # Sub-puntuaciones normalizadas (0 al 10)
+        subscores = {
+            "price": round(max(0.5, min(10.0, price_score)), 1),
+            "seller": round(max(0.5, min(10.0, trust_score)), 1),
+            "condition": round(max(1.0, min(10.0, 7.0 + (len(pros) * 0.8) - (len(cons) * 1.2))), 1)
+        }
+        confidence = "ALTA (Catálogo oficial de mercado)" if benchmark else "ESTIMACIÓN CONTEXTUAL"
+
         return {
             "score": final_score,
             "verdict": verdict,
@@ -177,8 +185,11 @@ class DealScorer:
             "savings_pct": round(savings_pct, 1),
             "normalized_product": product_name,
             "category": category,
+            "confidence": confidence,
+            "subscores": subscores,
             "pros": pros[:4],
             "cons": cons[:4],
             "risk_flags": risk_flags,
             "affiliate": affiliate_suggestion
         }
+
