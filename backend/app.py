@@ -8,7 +8,7 @@ from pydantic import BaseModel, HttpUrl
 
 from config import HOST, PORT, BASE_DIR
 from database import init_db, save_scan, get_recent_scans
-from extractor import WallapopExtractor
+from extractor import WallapopExtractor, UniversalExtractor
 from scorer import DealScorer
 
 app = FastAPI(
@@ -40,8 +40,8 @@ async def analyze_url(req: AnalyzeRequest):
     if not url:
         raise HTTPException(status_code=400, detail="Debes proporcionar una URL válida.")
 
-    # 1. Extraer datos del anuncio
-    item_data = WallapopExtractor.fetch_item_data(url)
+    # 1. Extraer datos del anuncio con UniversalExtractor (Wallapop, Vinted o Milanuncios)
+    item_data = UniversalExtractor.fetch_item_data(url)
     
     # 2. Evaluar y calcular puntuación
     evaluation = DealScorer.evaluate(item_data)

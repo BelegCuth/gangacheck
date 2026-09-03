@@ -269,6 +269,20 @@ def find_closest_benchmark(title: str) -> Optional[Dict[str, Any]]:
                 return row
             if "v2" in title_lower and "v2" in key:
                 return row
+
+        # Heurísticas de Moda y Sneakers (Vinted)
+        if ("dunk" in title_lower or "nike dunk" in title_lower) and "dunk" in key:
+            return row
+        if ("jordan" in title_lower or "air jordan" in title_lower) and "jordan" in key:
+            return row
+        if ("nuptse" in title_lower or "north face" in title_lower) and "nuptse" in key:
+            return row
+
+        # Heurísticas de Herramientas y Motor (Milanuncios)
+        if ("dewalt" in title_lower or "taladro" in title_lower) and "dewalt" in key:
+            return row
+        if ("tractor" in title_lower or "cortacesped" in title_lower) and "cortacesped" in key:
+            return row
                 
         if matches > best_score and matches >= 2:
             best_score = matches

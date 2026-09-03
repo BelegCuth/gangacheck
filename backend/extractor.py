@@ -246,3 +246,32 @@ class WallapopExtractor:
                 "shipping_available": True,
                 "source": "demo"
             }
+
+from vinted_extractor import VintedExtractor
+from milanuncios_extractor import MilanunciosExtractor
+
+class UniversalExtractor:
+    """
+    Enrutador universal que detecta automáticamente si el enlace proviene de
+    Wallapop, Vinted o Milanuncios y delega la extracción en el módulo adecuado.
+    """
+
+    @classmethod
+    def detect_platform(cls, url: str) -> str:
+        u = url.lower()
+        if "vinted." in u or "test-vinted" in u or "test-nike" in u:
+            return "vinted"
+        elif "milanuncios." in u or "test-milanuncios" in u or "test-dewalt" in u:
+            return "milanuncios"
+        return "wallapop"
+
+    @classmethod
+    def fetch_item_data(cls, url: str) -> Dict[str, Any]:
+        platform = cls.detect_platform(url)
+        if platform == "vinted":
+            return VintedExtractor.fetch_item_data(url)
+        elif platform == "milanuncios":
+            return MilanunciosExtractor.fetch_item_data(url)
+        else:
+            return WallapopExtractor.fetch_item_data(url)
+
