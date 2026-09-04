@@ -128,9 +128,14 @@ def init_db():
             seller_reviews INTEGER,
             has_shipping BOOLEAN,
             url TEXT,
+            image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE raw_listings ADD COLUMN image_url TEXT")
+    except Exception:
+        pass
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_raw_keyword ON raw_listings(keyword)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_raw_created_at ON raw_listings(created_at DESC)")
     
@@ -239,42 +244,168 @@ def save_scan(data: Dict[str, Any]) -> int:
 
 def save_raw_listing(item: Dict[str, Any]):
     """Guarda un anuncio en crudo para engordar el histórico de datos."""
+    img_url = item.get("image_url") or item.get("image") or ""
+    payload = {
+        "id": str(item.get("id")),
+        "platform": item.get("platform", "wallapop"),
+        "title": item.get("title", ""),
+        "price": float(item.get("price", 0.0)),
+        "keyword": item.get("keyword", ""),
+        "seller_name": item.get("seller_name", ""),
+        "seller_reviews": int(item.get("seller_reviews", 0)),
+        "has_shipping": bool(item.get("has_shipping", True)),
+        "url": item.get("url", "")
+    }
     if supabase_client:
         try:
-            supabase_client.table("raw_listings").upsert({
-                "id": str(item.get("id")),
-                "platform": item.get("platform", "wallapop"),
-                "title": item.get("title", ""),
-                "price": float(item.get("price", 0.0)),
-                "keyword": item.get("keyword", ""),
-                "seller_name": item.get("seller_name", ""),
-                "seller_reviews": int(item.get("seller_reviews", 0)),
-                "has_shipping": bool(item.get("has_shipping", True)),
-                "url": item.get("url", "")
-            }).execute()
+            supabase_client.table("raw_listings").upsert(payload).execute()
             return
         except Exception as e:
             print(f"[Supabase] Error en upsert raw_listing: {e}")
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR REPLACE INTO raw_listings 
-        (id, platform, title, price, keyword, seller_name, seller_reviews, has_shipping, url)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        str(item.get("id")),
-        item.get("platform", "wallapop"),
-        item.get("title", ""),
-        float(item.get("price", 0.0)),
-        item.get("keyword", ""),
-        item.get("seller_name", ""),
-        int(item.get("seller_reviews", 0)),
-        bool(item.get("has_shipping", True)),
-        item.get("url", "")
-    ))
+    try:
+        cursor.execute("ALTER TABLE raw_listings ADD COLUMN image_url TEXT")
+    except Exception:
+        pass
+
+    try:
+        cursor.execute("""
+            INSERT OR REPLACE INTO raw_listings 
+            (id, platform, title, price, keyword, seller_name, seller_reviews, has_shipping, url, image_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            str(item.get("id")),
+            item.get("platform", "wallapop"),
+            item.get("title", ""),
+            float(item.get("price", 0.0)),
+            item.get("keyword", ""),
+            item.get("seller_name", ""),
+            int(item.get("seller_reviews", 0)),
+            bool(item.get("has_shipping", True)),
+            item.get("url", ""),
+            img_url
+        ))
+    except Exception:
+        cursor.execute("""
+            INSERT OR REPLACE INTO raw_listings 
+            (id, platform, title, price, keyword, seller_name, seller_reviews, has_shipping, url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            str(item.get("id")),
+            item.get("platform", "wallapop"),
+            item.get("title", ""),
+            float(item.get("price", 0.0)),
+            item.get("keyword", ""),
+            item.get("seller_name", ""),
+            int(item.get("seller_reviews", 0)),
+            bool(item.get("has_shipping", True)),
+            item.get("url", "")
+        ))
     conn.commit()
     conn.close()
+
+def get_raw_listings(keyword: Optional[str] = None, platform: Optional[str] = None, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    """Obtiene anuncios en bruto recolectados del mercado con filtros opcionales."""
+    if supabase_client:
+        try:
+            query = supabase_client.table("raw_listings").select("*").order("created_at", desc=True).limit(limit)
+            if keyword and keyword.strip():
+                query = query.ilike("title", f"%{keyword.strip()}%")
+            if platform and platform != "all":
+                query = query.eq("platform", platform)
+            res = query.execute()
+            return res.data or []
+        except Exception as e:
+            print(f"[Supabase] Error al consultar raw_listings: {e}")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT id, platform, title, price, keyword, seller_name, seller_reviews, has_shipping, url, image_url, created_at FROM raw_listings WHERE 1=1"
+    params = []
+    if keyword and keyword.strip():
+        query += " AND (title LIKE ? OR keyword LIKE ?)"
+        params.extend([f"%{keyword.strip()}%", f"%{keyword.strip()}%"])
+    if platform and platform != "all":
+        query += " AND platform = ?"
+        params.append(platform)
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    result = []
+    for r in rows:
+        result.append({
+            "id": r["id"],
+            "platform": r["platform"],
+            "title": r["title"],
+            "price": r["price"],
+            "keyword": r["keyword"],
+            "seller_name": r["seller_name"],
+            "seller_reviews": r["seller_reviews"],
+            "has_shipping": bool(r["has_shipping"]),
+            "url": r["url"],
+            "image_url": r["image_url"] if "image_url" in r.keys() else "",
+            "created_at": r["created_at"]
+        })
+    return result
+
+def delete_raw_listing(listing_id: str) -> bool:
+    """Elimina un anuncio en bruto por ID."""
+    if supabase_client:
+        try:
+            supabase_client.table("raw_listings").delete().eq("id", listing_id).execute()
+            return True
+        except Exception as e:
+            print(f"[Supabase] Error al eliminar raw_listing: {e}")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM raw_listings WHERE id = ?", (listing_id,))
+    deleted = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+def get_market_intelligence_stats(keyword: Optional[str] = None) -> Dict[str, Any]:
+    """Calcula estadísticas agregadas sobre los anuncios recolectados."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT price FROM raw_listings WHERE price > 5"
+    params = []
+    if keyword and keyword.strip():
+        query += " AND (title LIKE ? OR keyword LIKE ?)"
+        params.extend([f"%{keyword.strip()}%", f"%{keyword.strip()}%"])
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        return {
+            "total_items": 0,
+            "median_price": 0.0,
+            "min_price": 0.0,
+            "max_price": 0.0,
+            "avg_price": 0.0
+        }
+    
+    prices = sorted([float(r["price"]) for r in rows])
+    n = len(prices)
+    median = prices[n // 2] if n % 2 != 0 else (prices[n // 2 - 1] + prices[n // 2]) / 2.0
+    
+    p15 = prices[int(n * 0.15)]
+    p85 = prices[int(n * 0.85)]
+    
+    return {
+        "total_items": n,
+        "median_price": round(float(median), 2),
+        "min_price": round(float(p15), 2),
+        "max_price": round(float(p85), 2),
+        "avg_price": round(sum(prices) / n, 2)
+    }
 
 def get_benchmark(product_key: str) -> Optional[Dict[str, Any]]:
     if supabase_client:

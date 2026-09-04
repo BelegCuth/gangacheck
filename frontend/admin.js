@@ -31,9 +31,46 @@ document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("admin-table-body");
     const tableCountLabel = document.getElementById("table-count-label");
 
+    // Tabs & Views
+    const tabBtnScans = document.getElementById("tab-btn-scans");
+    const tabBtnRaw = document.getElementById("tab-btn-raw");
+    const tabBtnHarvester = document.getElementById("tab-btn-harvester");
+    const tabBadgeScans = document.getElementById("tab-badge-scans");
+    const tabBadgeRaw = document.getElementById("tab-badge-raw");
+    const viewScans = document.getElementById("view-scans");
+    const viewRaw = document.getElementById("view-raw");
+    const viewHarvester = document.getElementById("view-harvester");
+
+    // Raw Listings Elements
+    const rawTableBody = document.getElementById("raw-table-body");
+    const rawTableCountLabel = document.getElementById("raw-table-count-label");
+    const rawSearchInput = document.getElementById("raw-search-input");
+    const rawFilterPlatform = document.getElementById("raw-filter-platform");
+    const btnRawRefresh = document.getElementById("btn-raw-refresh");
+    const rawStatTotal = document.getElementById("raw-stat-total");
+    const rawStatMedian = document.getElementById("raw-stat-median");
+    const rawStatRange = document.getElementById("raw-stat-range");
+    const rawStatAvg = document.getElementById("raw-stat-avg");
+
+    // Harvester Elements
+    const harvesterForm = document.getElementById("harvester-form");
+    const harvesterKeyword = document.getElementById("harvester-keyword");
+    const harvesterPlatform = document.getElementById("harvester-platform");
+    const harvesterLimit = document.getElementById("harvester-limit");
+    const btnRunHarvest = document.getElementById("btn-run-harvest");
+    const harvesterLoading = document.getElementById("harvester-loading");
+    const harvesterResults = document.getElementById("harvester-results");
+    const harvesterTableBody = document.getElementById("harvester-table-body");
+    const hMetricValid = document.getElementById("h-metric-valid");
+    const hMetricMedian = document.getElementById("h-metric-median");
+    const hMetricRange = document.getElementById("h-metric-range");
+    const hMetricNoise = document.getElementById("h-metric-noise");
+    const btnSaveHarvestBenchmark = document.getElementById("btn-save-harvest-benchmark");
+
     // Estado en memoria
     let rawScans = [];
     let filteredScans = [];
+    let lastHarvestData = null;
 
     // 1. Comprobar si ya existe sesión iniciada
     checkAuth();
@@ -114,8 +151,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (dataRes.ok) {
                 const data = await dataRes.json();
                 rawScans = data.scans || [];
+                if (tabBadgeScans) tabBadgeScans.textContent = rawScans.length;
                 applyFilters();
             }
+            // Precargar conteo de raw listings
+            loadRawListings();
         } catch (err) {
             console.error("Error al cargar datos de admin:", err);
         }
@@ -408,6 +448,294 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (err) {
                 alert("Error de conexión.");
+            }
+        });
+    }
+
+    // ==========================================
+    // 7. GESTIÓN DE PESTAÑAS (TABS)
+    // ==========================================
+    function switchTab(tabId) {
+        if (!tabBtnScans || !tabBtnRaw || !tabBtnHarvester) return;
+
+        tabBtnScans.classList.remove("active");
+        tabBtnRaw.classList.remove("active");
+        tabBtnHarvester.classList.remove("active");
+
+        viewScans.classList.add("hidden");
+        viewRaw.classList.add("hidden");
+        viewHarvester.classList.add("hidden");
+
+        if (tabId === "scans") {
+            tabBtnScans.classList.add("active");
+            viewScans.classList.remove("hidden");
+        } else if (tabId === "raw") {
+            tabBtnRaw.classList.add("active");
+            viewRaw.classList.remove("hidden");
+            loadRawListings();
+        } else if (tabId === "harvester") {
+            tabBtnHarvester.classList.add("active");
+            viewHarvester.classList.remove("hidden");
+        }
+    }
+
+    if (tabBtnScans) tabBtnScans.addEventListener("click", () => switchTab("scans"));
+    if (tabBtnRaw) tabBtnRaw.addEventListener("click", () => switchTab("raw"));
+    if (tabBtnHarvester) tabBtnHarvester.addEventListener("click", () => switchTab("harvester"));
+
+    // ==========================================
+    // 8. EXPLORADOR DE BBDD DE MERCADO (RAW LISTINGS)
+    // ==========================================
+    async function loadRawListings() {
+        const token = sessionStorage.getItem("admin_token");
+        if (!token) return;
+        const query = rawSearchInput ? rawSearchInput.value.trim() : "";
+        const plat = rawFilterPlatform ? rawFilterPlatform.value : "all";
+
+        try {
+            const url = `/api/admin/raw-listings?keyword=${encodeURIComponent(query)}&platform=${encodeURIComponent(plat)}&limit=200`;
+            const res = await fetch(url, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const items = data.listings || [];
+            const stats = data.stats || {};
+
+            if (tabBadgeRaw) tabBadgeRaw.textContent = stats.total_items || items.length;
+            if (rawStatTotal) rawStatTotal.textContent = stats.total_items || items.length;
+            if (rawStatMedian) rawStatMedian.textContent = `${stats.median_price || 0} €`;
+            if (rawStatRange) rawStatRange.textContent = `${stats.min_price || 0} € - ${stats.max_price || 0} €`;
+            if (rawStatAvg) rawStatAvg.textContent = `${stats.avg_price || 0} €`;
+            if (rawTableCountLabel) rawTableCountLabel.textContent = `Mostrando ${items.length} anuncios`;
+
+            renderRawTable(items);
+        } catch (err) {
+            console.error("Error al cargar raw listings:", err);
+        }
+    }
+
+    if (rawSearchInput) {
+        let debounceTimeout;
+        rawSearchInput.addEventListener("input", () => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(loadRawListings, 300);
+        });
+    }
+
+    if (rawFilterPlatform) {
+        rawFilterPlatform.addEventListener("change", loadRawListings);
+    }
+
+    if (btnRawRefresh) {
+        btnRawRefresh.addEventListener("click", loadRawListings);
+    }
+
+    function renderRawTable(items) {
+        if (!rawTableBody) return;
+        rawTableBody.innerHTML = "";
+        if (items.length === 0) {
+            rawTableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 32px; color: var(--text-muted);">No se encontraron anuncios en el histórico. Usa el <strong>Recolector en Vivo</strong> para rastrear ofertas reales.</td></tr>`;
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement("tr");
+            const thumb = item.image_url ? 
+                `<img src="${escapeHtml(item.image_url)}" class="table-thumb" alt="Foto" onerror="this.outerHTML='<div class=\\'thumb-fallback\\'>📦</div>'">` :
+                `<div class="thumb-fallback">📦</div>`;
+            
+            const platClass = (item.platform || "vinted").toLowerCase();
+            const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString("es-ES", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : "Reciente";
+
+            tr.innerHTML = `
+                <td>${thumb}</td>
+                <td class="item-title-cell">
+                    <a href="${escapeHtml(item.url)}" target="_blank" class="item-title-link">${escapeHtml(item.title)}</a>
+                    <span class="item-subtext">Búsqueda: ${escapeHtml(item.keyword || "—")}</span>
+                </td>
+                <td><span class="badge-platform ${platClass}">${escapeHtml(item.platform)}</span></td>
+                <td><span class="price-current">${item.price.toFixed(2)} €</span></td>
+                <td>
+                    <div>${escapeHtml(item.seller_name || "Vendedor")}</div>
+                    <div class="item-subtext">⭐ ${item.seller_reviews || 0} reviews</div>
+                </td>
+                <td>${item.has_shipping ? '<span class="risk-badge risk-bajo">✓ Envío</span>' : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">${dateStr}</td>
+                <td><a href="${escapeHtml(item.url)}" target="_blank" class="btn-external">↗ Ver Anuncio</a></td>
+                <td>
+                    <button class="btn-ghost btn-delete-raw" data-id="${escapeHtml(item.id)}" title="Eliminar registro" style="color: #F87171; border-color: rgba(239, 68, 68, 0.2);">
+                        🗑️
+                    </button>
+                </td>
+            `;
+            rawTableBody.appendChild(tr);
+        });
+
+        // Eventos de borrado de fila individual
+        rawTableBody.querySelectorAll(".btn-delete-raw").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                const id = e.currentTarget.getAttribute("data-id");
+                if (confirm("¿Deseas eliminar este registro de la base de datos?")) {
+                    const token = sessionStorage.getItem("admin_token");
+                    const res = await fetch(`/api/admin/raw-listing/${encodeURIComponent(id)}`, {
+                        method: "DELETE",
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        loadRawListings();
+                    }
+                }
+            });
+        });
+    }
+
+    // ==========================================
+    // 9. RECOLECTOR DE MERCADO EN VIVO (HARVESTER)
+    // ==========================================
+    if (harvesterForm) {
+        harvesterForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const kw = harvesterKeyword.value.trim();
+            if (!kw) return;
+            const plat = harvesterPlatform.value;
+            const lim = parseInt(harvesterLimit.value, 10);
+            runHarvest(kw, plat, lim);
+        });
+    }
+
+    // Botones de búsqueda rápida (chips)
+    document.querySelectorAll(".quick-tags .tag-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const kw = btn.getAttribute("data-kw");
+            if (harvesterKeyword) harvesterKeyword.value = kw;
+            runHarvest(kw, "all", 50);
+        });
+    });
+
+    async function runHarvest(keyword, platform, limit) {
+        const token = sessionStorage.getItem("admin_token");
+        if (!token) return;
+
+        harvesterLoading.classList.remove("hidden");
+        harvesterResults.classList.add("hidden");
+        btnRunHarvest.disabled = true;
+
+        try {
+            const res = await fetch("/api/admin/harvest", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ keyword, platform, limit })
+            });
+
+            const data = await res.json();
+            harvesterLoading.classList.add("hidden");
+            btnRunHarvest.disabled = false;
+
+            if (res.ok && data.success) {
+                lastHarvestData = data;
+                harvesterResults.classList.remove("hidden");
+
+                const m = data.metrics || {};
+                hMetricValid.textContent = m.total_valid || 0;
+                hMetricMedian.textContent = `${m.median_price || 0} €`;
+                hMetricRange.textContent = `${m.min_normal_price || 0} € - ${m.max_normal_price || 0} €`;
+                hMetricNoise.textContent = data.noise_discarded || 0;
+
+                // Renderizar tabla de resultados recién recolectados
+                renderHarvesterTable(data.listings || []);
+
+                // Actualizar contador del tab de raw
+                loadRawListings();
+            } else {
+                alert(data.detail || "Hubo un error al rastrear el mercado.");
+            }
+        } catch (err) {
+            harvesterLoading.classList.add("hidden");
+            btnRunHarvest.disabled = false;
+            alert("Error de conexión al rastrear el mercado.");
+        }
+    }
+
+    function renderHarvesterTable(listings) {
+        if (!harvesterTableBody) return;
+        harvesterTableBody.innerHTML = "";
+        if (listings.length === 0) {
+            harvesterTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">No se obtuvieron anuncios válidos tras descartar ruido.</td></tr>`;
+            return;
+        }
+
+        listings.forEach(it => {
+            const tr = document.createElement("tr");
+            const thumb = it.image_url ? 
+                `<img src="${escapeHtml(it.image_url)}" class="table-thumb" alt="Foto" onerror="this.outerHTML='<div class=\\'thumb-fallback\\'>📦</div>'">` :
+                `<div class="thumb-fallback">📦</div>`;
+
+            const platClass = (it.platform || "vinted").toLowerCase();
+
+            tr.innerHTML = `
+                <td>${thumb}</td>
+                <td class="item-title-cell">
+                    <a href="${escapeHtml(it.url)}" target="_blank" class="item-title-link">${escapeHtml(it.title)}</a>
+                </td>
+                <td><span class="badge-platform ${platClass}">${escapeHtml(it.platform)}</span></td>
+                <td><span class="price-current">${it.price.toFixed(2)} €</span></td>
+                <td>${escapeHtml(it.seller_name || "Vendedor")}</td>
+                <td>${it.has_shipping ? '<span class="risk-badge risk-bajo">✓ Envío</span>' : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td><a href="${escapeHtml(it.url)}" target="_blank" class="btn-external">↗ Ver Anuncio</a></td>
+            `;
+            harvesterTableBody.appendChild(tr);
+        });
+    }
+
+    // 1-Click Guardar como Benchmark Oficial en Supabase
+    if (btnSaveHarvestBenchmark) {
+        btnSaveHarvestBenchmark.addEventListener("click", async () => {
+            if (!lastHarvestData || !lastHarvestData.metrics) {
+                alert("Primero debes realizar una búsqueda.");
+                return;
+            }
+
+            const token = sessionStorage.getItem("admin_token");
+            const m = lastHarvestData.metrics;
+            const kw = lastHarvestData.keyword;
+            const slug = kw.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+            const payload = {
+                product_key: slug,
+                display_name: kw,
+                median_price: m.median_price,
+                min_normal_price: m.min_normal_price,
+                max_normal_price: m.max_normal_price,
+                category: "Mercado Recolectado"
+            };
+
+            try {
+                const res = await fetch("/api/admin/save-benchmark-from-harvest", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    btnSaveHarvestBenchmark.textContent = "✅ ¡Benchmark Guardado en Supabase!";
+                    btnSaveHarvestBenchmark.style.background = "var(--accent-green)";
+                    setTimeout(() => {
+                        btnSaveHarvestBenchmark.textContent = "🏷️ Guardar como Benchmark Oficial";
+                        btnSaveHarvestBenchmark.style.background = "";
+                    }, 3500);
+                    loadBenchmarks();
+                } else {
+                    alert("No se pudo guardar el benchmark.");
+                }
+            } catch (err) {
+                alert("Error de conexión al guardar benchmark.");
             }
         });
     }

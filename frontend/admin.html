@@ -375,30 +375,188 @@
         .risk-moderado { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
         .risk-alto { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
 
-        .btn-external {
+        /* Estilos de Pestañas (Tabs) */
+        .admin-tabs-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 28px 0 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            overflow-x: auto;
+        }
+
+        .admin-tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
             color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.8rem;
-            padding: 6px 10px;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .admin-tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .admin-tab-btn.active {
+            background: rgba(249, 115, 22, 0.12);
+            color: var(--accent-flame);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .tab-badge {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .admin-tab-btn.active .tab-badge {
+            background: var(--accent-flame);
+            color: #000;
+        }
+
+        /* Thumbnails y Badges */
+        .table-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .thumb-fallback {
+            width: 44px;
+            height: 44px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .badge-platform {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
+            text-transform: uppercase;
+            display: inline-block;
+        }
+
+        .badge-platform.wallapop { background: rgba(16, 185, 129, 0.15); color: #34D399; }
+        .badge-platform.vinted { background: rgba(6, 182, 212, 0.15); color: #22D3EE; }
+        .badge-platform.milanuncios { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+
+        /* Harvester Box & Metrics */
+        .harvester-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 26px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .harvester-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+
+        .harvester-input {
+            flex: 2;
+            min-width: 260px;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
-            display: inline-block;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .harvester-input:focus {
+            border-color: var(--accent-flame);
+        }
+
+        .quick-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .tag-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
             transition: all 0.2s;
         }
 
-        .btn-external:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-primary);
+        .tag-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: var(--accent-flame);
         }
 
-        .table-footer {
-            padding: 14px 20px;
+        .harvest-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .harvest-metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .harvest-metric-box {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .sync-benchmark-banner {
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            border-top: 1px solid var(--border-color);
+            align-items: center;
+            margin-top: 20px;
+            gap: 16px;
+            flex-wrap: wrap;
         }
     </style>
 </head>
@@ -447,97 +605,290 @@
         <!-- Vista 2: Dashboard Admin (Si está logueado) -->
         <section id="dashboard-section" class="hidden" style="margin-bottom: 60px;">
             
-            <!-- Stats -->
-            <div class="admin-stats-grid">
-                <div class="stat-box">
-                    <div class="stat-label">Total Productos en BBDD</div>
-                    <div id="stat-total" class="stat-number">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">🔥 Chollos Detectados</div>
-                    <div id="stat-chollos" class="stat-number" style="color: var(--accent-green);">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">⚠️ Posibles Estafas</div>
-                    <div id="stat-estafas" class="stat-number" style="color: var(--accent-red);">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">💰 Ahorro Acumulado</div>
-                    <div id="stat-ahorro" class="stat-number" style="color: var(--accent-flame);">0 €</div>
-                </div>
-            </div>
+            <!-- Barra de Navegación por Pestañas -->
+            <nav class="admin-tabs-nav">
+                <button id="tab-btn-scans" class="admin-tab-btn active">
+                    📊 Escaneos de Usuarios
+                    <span id="tab-badge-scans" class="tab-badge">0</span>
+                </button>
+                <button id="tab-btn-raw" class="admin-tab-btn">
+                    🗄️ BBDD de Mercado (Raw)
+                    <span id="tab-badge-raw" class="tab-badge">0</span>
+                </button>
+                <button id="tab-btn-harvester" class="admin-tab-btn">
+                    🚀 Recolector en Vivo (Harvester)
+                </button>
+            </nav>
 
-            <!-- Toolbar de Filtros y Búsqueda -->
-            <div class="toolbar-card">
-                <div class="toolbar-filters">
-                    <div class="search-input-box">
-                        <input type="text" id="search-input" placeholder="🔍 Buscar por título, modelo o vendedor...">
+            <!-- PESTAÑA 1: ESCANEOS DE USUARIOS -->
+            <div id="view-scans">
+                <!-- Stats -->
+                <div class="admin-stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Productos en BBDD</div>
+                        <div id="stat-total" class="stat-number">0</div>
                     </div>
-                    
-                    <select id="filter-platform" class="filter-select">
-                        <option value="all">Todas las plataformas</option>
-                        <option value="wallapop">Wallapop</option>
-                        <option value="vinted">Vinted</option>
-                        <option value="milanuncios">Milanuncios</option>
-                    </select>
-
-                    <select id="filter-verdict" class="filter-select">
-                        <option value="all">Todos los veredictos</option>
-                        <option value="chollo">🔥 Solo Chollos (>= 7.5)</option>
-                        <option value="justo">🟡 Precio Justo (5.0 - 7.4)</option>
-                        <option value="caro">🔴 Caro / Sobreprecio (< 5.0)</option>
-                        <option value="estafa">⚠️ Posible Estafa / Riesgo Alto</option>
-                    </select>
-
-                    <select id="filter-sort" class="filter-select">
-                        <option value="date-desc">Más recientes primero</option>
-                        <option value="score-desc">Mayor nota (10 -> 0)</option>
-                        <option value="score-asc">Menor nota (0 -> 10)</option>
-                        <option value="price-asc">Precio: más barato</option>
-                        <option value="price-desc">Precio: más caro</option>
-                        <option value="savings-desc">Mayor ahorro (€)</option>
-                    </select>
+                    <div class="stat-box">
+                        <div class="stat-label">🔥 Chollos Detectados</div>
+                        <div id="stat-chollos" class="stat-number" style="color: var(--accent-green);">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">⚠️ Posibles Estafas</div>
+                        <div id="stat-estafas" class="stat-number" style="color: var(--accent-red);">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">💰 Ahorro Acumulado</div>
+                        <div id="stat-ahorro" class="stat-number" style="color: var(--accent-flame);">0 €</div>
+                    </div>
                 </div>
 
-                <div class="toolbar-buttons">
-                    <button id="btn-open-benchmarks" class="btn-action" title="Gestionar Precios de Mercado">
-                        🏷️ Precios Mercado
-                    </button>
-                    <button id="btn-refresh" class="btn-action" title="Recargar datos">
-                        🔄 Refrescar
-                    </button>
-                    <button id="btn-export-csv" class="btn-action" title="Exportar a CSV">
-                        📥 Exportar CSV
-                    </button>
+                <!-- Toolbar de Filtros y Búsqueda -->
+                <div class="toolbar-card">
+                    <div class="toolbar-filters">
+                        <div class="search-input-box">
+                            <input type="text" id="search-input" placeholder="🔍 Buscar por título, modelo o vendedor...">
+                        </div>
+                        
+                        <select id="filter-platform" class="filter-select">
+                            <option value="all">Todas las plataformas</option>
+                            <option value="wallapop">Wallapop</option>
+                            <option value="vinted">Vinted</option>
+                            <option value="milanuncios">Milanuncios</option>
+                        </select>
+
+                        <select id="filter-verdict" class="filter-select">
+                            <option value="all">Todos los veredictos</option>
+                            <option value="chollo">🔥 Solo Chollos (>= 7.5)</option>
+                            <option value="justo">🟡 Precio Justo (5.0 - 7.4)</option>
+                            <option value="caro">🔴 Caro / Sobreprecio (< 5.0)</option>
+                            <option value="estafa">⚠️ Posible Estafa / Riesgo Alto</option>
+                        </select>
+
+                        <select id="filter-sort" class="filter-select">
+                            <option value="date-desc">Más recientes primero</option>
+                            <option value="score-desc">Mayor nota (10 -> 0)</option>
+                            <option value="score-asc">Menor nota (0 -> 10)</option>
+                            <option value="price-asc">Precio: más barato</option>
+                            <option value="price-desc">Precio: más caro</option>
+                            <option value="savings-desc">Mayor ahorro (€)</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-buttons">
+                        <button id="btn-open-benchmarks" class="btn-action" title="Gestionar Precios de Mercado">
+                            🏷️ Precios Mercado
+                        </button>
+                        <button id="btn-refresh" class="btn-action" title="Recargar datos">
+                            🔄 Refrescar
+                        </button>
+                        <button id="btn-export-csv" class="btn-action" title="Exportar a CSV">
+                            📥 Exportar CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de Datos -->
+                <div class="table-card">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Nota</th>
+                                    <th>Producto / Título</th>
+                                    <th>Precio</th>
+                                    <th>Mediana BBDD</th>
+                                    <th>Ahorro Estimado</th>
+                                    <th>Vendedor</th>
+                                    <th>Envíos</th>
+                                    <th>Riesgo</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-table-body">
+                                <!-- Inyectado dinámicamente con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <span id="table-count-label">Mostrando 0 productos</span>
+                        <span>Conexión: <strong>PostgreSQL (Supabase Cloud)</strong></span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Tabla de Datos -->
-            <div class="table-card">
-                <div class="table-responsive">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Nota</th>
-                                <th>Producto / Título</th>
-                                <th>Precio</th>
-                                <th>Mediana BBDD</th>
-                                <th>Ahorro Estimado</th>
-                                <th>Vendedor</th>
-                                <th>Envíos</th>
-                                <th>Riesgo</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-table-body">
-                            <!-- Inyectado dinámicamente con JavaScript -->
-                        </tbody>
-                    </table>
+            <!-- PESTAÑA 2: EXPLORADOR DE BBDD DE MERCADO (RAW LISTINGS) -->
+            <div id="view-raw" class="hidden">
+                <!-- Stats BBDD Cruda -->
+                <div class="admin-stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Anuncios en Histórico</div>
+                        <div id="raw-stat-total" class="stat-number">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">🏷️ Mediana del Mercado</div>
+                        <div id="raw-stat-median" class="stat-number" style="color: var(--accent-flame);">0 €</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">📊 Rango Normal (P15 - P85)</div>
+                        <div id="raw-stat-range" class="stat-number" style="font-size: 1.4rem; color: var(--accent-green);">0 € - 0 €</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">📈 Precio Promedio</div>
+                        <div id="raw-stat-avg" class="stat-number" style="color: var(--text-primary);">0 €</div>
+                    </div>
                 </div>
-                <div class="table-footer">
-                    <span id="table-count-label">Mostrando 0 productos</span>
-                    <span>Conexión: <strong>PostgreSQL (Supabase Cloud)</strong></span>
+
+                <!-- Toolbar Raw -->
+                <div class="toolbar-card">
+                    <div class="toolbar-filters">
+                        <div class="search-input-box">
+                            <input type="text" id="raw-search-input" placeholder="🔍 Filtrar anuncios en la base de datos...">
+                        </div>
+                        <select id="raw-filter-platform" class="filter-select">
+                            <option value="all">Todas las plataformas</option>
+                            <option value="vinted">Vinted</option>
+                            <option value="wallapop">Wallapop</option>
+                        </select>
+                    </div>
+                    <div class="toolbar-buttons">
+                        <button id="btn-raw-refresh" class="btn-action" title="Recargar">
+                            🔄 Actualizar BBDD
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Tabla Raw Listings -->
+                <div class="table-card">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">Foto</th>
+                                    <th>Título / Anuncio</th>
+                                    <th>Plataforma</th>
+                                    <th>Precio</th>
+                                    <th>Vendedor</th>
+                                    <th>Envíos</th>
+                                    <th>Fecha Registro</th>
+                                    <th>Enlace</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="raw-table-body">
+                                <!-- Inyectado dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <span id="raw-table-count-label">Mostrando 0 anuncios</span>
+                        <span>Tabla: <strong>raw_listings</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 3: RECOLECTOR EN VIVO (LIVE HARVESTER) -->
+            <div id="view-harvester" class="hidden">
+                <div class="harvester-card">
+                    <h3 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 6px;">
+                        🚀 Rastrear Inteligencia de Mercado en Vivo
+                    </h3>
+                    <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 18px;">
+                        Introduce cualquier producto. El motor consultará ofertas reales en tiempo real, descartará anuncios trampa (0€, piezas rotas o cajas) y calculará la mediana de mercado exacta.
+                    </p>
+
+                    <form id="harvester-form" class="harvester-form">
+                        <input type="text" id="harvester-keyword" class="harvester-input" required placeholder="Ej: PlayStation 5, iPhone 14 128GB, Nintendo Switch OLED, Steam Deck...">
+                        <select id="harvester-platform" class="filter-select">
+                            <option value="all">Todas las plataformas (Vinted + Wallapop)</option>
+                            <option value="vinted">Solo Vinted</option>
+                            <option value="wallapop">Solo Wallapop</option>
+                        </select>
+                        <select id="harvester-limit" class="filter-select">
+                            <option value="30">30 anuncios</option>
+                            <option value="50" selected>50 anuncios</option>
+                            <option value="80">80 anuncios</option>
+                        </select>
+                        <button type="submit" id="btn-run-harvest" class="btn-submit" style="padding: 12px 24px;">
+                            ⚡ Rastrear Mercado
+                        </button>
+                    </form>
+
+                    <div class="quick-tags">
+                        <span>Búsquedas rápidas:</span>
+                        <button type="button" class="tag-btn" data-kw="PlayStation 5">PlayStation 5</button>
+                        <button type="button" class="tag-btn" data-kw="iPhone 13 128GB">iPhone 13 128GB</button>
+                        <button type="button" class="tag-btn" data-kw="Nintendo Switch OLED">Switch OLED</button>
+                        <button type="button" class="tag-btn" data-kw="Steam Deck 512GB">Steam Deck</button>
+                        <button type="button" class="tag-btn" data-kw="RTX 4070">RTX 4070</button>
+                    </div>
+                </div>
+
+                <!-- Estado de Carga -->
+                <div id="harvester-loading" class="table-card hidden" style="text-align: center; padding: 40px;">
+                    <div style="font-size: 2.2rem; animation: spin 1s infinite linear; display: inline-block; margin-bottom: 12px;">⏳</div>
+                    <h4 style="font-size: 1.1rem; font-weight: 800;">Rastreando ofertas reales en vivo...</h4>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px;">Consultando APIs de segunda mano, filtrando estafas y calculando medianas estadísticas.</p>
+                </div>
+
+                <!-- Resultados del Harvester -->
+                <div id="harvester-results" class="hidden">
+                    <div class="harvest-metrics-grid">
+                        <div class="harvest-metric-box">
+                            <div class="stat-label">Anuncios Válidos</div>
+                            <div id="h-metric-valid" class="stat-number" style="color: var(--accent-green);">0</div>
+                        </div>
+                        <div class="harvest-metric-box">
+                            <div class="stat-label">🔥 Mediana Real Calculada</div>
+                            <div id="h-metric-median" class="stat-number" style="color: var(--accent-flame);">0 €</div>
+                        </div>
+                        <div class="harvest-metric-box">
+                            <div class="stat-label">Rango Normal (P15 - P85)</div>
+                            <div id="h-metric-range" class="stat-number" style="font-size: 1.4rem; color: #38BDF8;">0 € - 0 €</div>
+                        </div>
+                        <div class="harvest-metric-box">
+                            <div class="stat-label">🗑️ Ruido Descartado (0€ / Rotos)</div>
+                            <div id="h-metric-noise" class="stat-number" style="color: var(--accent-red);">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Banner de Sincronización a Benchmark Oficial -->
+                    <div class="sync-benchmark-banner">
+                        <div>
+                            <h4 style="font-size: 0.98rem; font-weight: 800; color: #fff; margin-bottom: 4px;">
+                                💡 ¿Fijar como Precio Oficial de Referencia (Benchmark)?
+                            </h4>
+                            <p style="font-size: 0.82rem; color: var(--text-secondary);">
+                                Guarda esta mediana en Supabase para que GangaCheck la use automáticamente al evaluar chollos de este producto.
+                            </p>
+                        </div>
+                        <button id="btn-save-harvest-benchmark" class="btn-submit" style="padding: 10px 18px; font-size: 0.88rem; white-space: nowrap;">
+                            🏷️ Guardar como Benchmark Oficial
+                        </button>
+                    </div>
+
+                    <!-- Tabla de Anuncios Recién Extraídos -->
+                    <div class="table-card" style="margin-top: 20px;">
+                        <div class="table-responsive">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Foto</th>
+                                        <th>Título Real</th>
+                                        <th>Plataforma</th>
+                                        <th>Precio</th>
+                                        <th>Vendedor</th>
+                                        <th>Envíos</th>
+                                        <th>Ver Anuncio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="harvester-table-body">
+                                    <!-- Inyectado dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </section>
