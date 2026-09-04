@@ -1,3 +1,4 @@
+import re
 import sqlite3
 import json
 from datetime import datetime
@@ -20,8 +21,68 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+DEFAULT_BENCHMARKS = [
+    # Consolas y Gaming
+    ("ps5_disc", "PlayStation 5 (Con Lector)", 380.0, 320.0, 430.0, "Consolas"),
+    ("ps5_digital", "PlayStation 5 Digital", 330.0, 280.0, 370.0, "Consolas"),
+    ("ps5_slim", "PlayStation 5 Slim 1TB", 410.0, 360.0, 460.0, "Consolas"),
+    ("ps5_pro", "PlayStation 5 Pro 2TB", 680.0, 600.0, 750.0, "Consolas"),
+    ("ps4_pro", "PlayStation 4 Pro 1TB", 140.0, 110.0, 170.0, "Consolas"),
+    ("ps4_slim", "PlayStation 4 Slim 500GB", 100.0, 80.0, 130.0, "Consolas"),
+    ("switch_oled", "Nintendo Switch OLED", 230.0, 190.0, 270.0, "Consolas"),
+    ("switch_v2", "Nintendo Switch V2", 160.0, 130.0, 190.0, "Consolas"),
+    ("switch_lite", "Nintendo Switch Lite", 110.0, 90.0, 135.0, "Consolas"),
+    ("xbox_series_x", "Xbox Series X 1TB", 360.0, 300.0, 410.0, "Consolas"),
+    ("xbox_series_s", "Xbox Series S 512GB", 175.0, 140.0, 210.0, "Consolas"),
+    ("steam_deck_512", "Steam Deck 512GB", 320.0, 270.0, 380.0, "Consolas"),
+    ("steam_deck_oled", "Steam Deck OLED 512GB", 440.0, 390.0, 500.0, "Consolas"),
+    ("asus_rog_ally", "ASUS ROG Ally Z1 Extreme", 420.0, 360.0, 480.0, "Consolas"),
+    
+    # Smartphones & Tablets
+    ("iphone_11_128", "Apple iPhone 11 128GB", 220.0, 180.0, 260.0, "Móviles"),
+    ("iphone_12_128", "Apple iPhone 12 128GB", 280.0, 230.0, 330.0, "Móviles"),
+    ("iphone_13_128", "Apple iPhone 13 128GB", 360.0, 300.0, 420.0, "Móviles"),
+    ("iphone_13_pro", "Apple iPhone 13 Pro 128GB", 460.0, 400.0, 520.0, "Móviles"),
+    ("iphone_14_128", "Apple iPhone 14 128GB", 460.0, 400.0, 520.0, "Móviles"),
+    ("iphone_14_pro", "Apple iPhone 14 Pro 128GB", 590.0, 520.0, 670.0, "Móviles"),
+    ("iphone_15_128", "Apple iPhone 15 128GB", 580.0, 510.0, 650.0, "Móviles"),
+    ("iphone_15_pro", "Apple iPhone 15 Pro 128GB", 740.0, 670.0, 820.0, "Móviles"),
+    ("iphone_15_promax", "Apple iPhone 15 Pro Max 256GB", 860.0, 780.0, 950.0, "Móviles"),
+    ("samsung_s23", "Samsung Galaxy S23 128GB", 390.0, 330.0, 450.0, "Móviles"),
+    ("samsung_s24", "Samsung Galaxy S24 256GB", 520.0, 450.0, 590.0, "Móviles"),
+    ("samsung_s24_ultra", "Samsung Galaxy S24 Ultra 256GB", 790.0, 700.0, 890.0, "Móviles"),
+    ("ipad_air_m1", "Apple iPad Air M1 (5ª Gen)", 420.0, 360.0, 480.0, "Tablets"),
+    ("ipad_pro_11_m2", "Apple iPad Pro 11 M2", 640.0, 560.0, 720.0, "Tablets"),
+
+    # Informática y Portátiles
+    ("macbook_air_m1", "Apple MacBook Air M1 256GB", 490.0, 430.0, 560.0, "Portátiles"),
+    ("macbook_air_m2", "Apple MacBook Air M2 256GB", 680.0, 600.0, 760.0, "Portátiles"),
+    ("macbook_pro_m1", "Apple MacBook Pro 14 M1 Pro", 950.0, 850.0, 1100.0, "Portátiles"),
+    ("rtx_4060", "Tarjeta Gráfica RTX 4060 8GB", 250.0, 220.0, 290.0, "Informática"),
+    ("rtx_4070", "Tarjeta Gráfica RTX 4070 12GB", 480.0, 420.0, 550.0, "Informática"),
+    ("rtx_4080", "Tarjeta Gráfica RTX 4080 16GB", 830.0, 740.0, 930.0, "Informática"),
+    ("rtx_3060", "Tarjeta Gráfica RTX 3060 12GB", 190.0, 160.0, 225.0, "Informática"),
+
+    # Audio y Fotografía
+    ("airpods_pro_2", "Apple AirPods Pro 2", 150.0, 120.0, 180.0, "Audio"),
+    ("airpods_max", "Apple AirPods Max", 340.0, 290.0, 395.0, "Audio"),
+    ("sony_wh1000xm5", "Auriculares Sony WH-1000XM5", 220.0, 180.0, 260.0, "Audio"),
+    ("sony_wh1000xm4", "Auriculares Sony WH-1000XM4", 145.0, 120.0, 175.0, "Audio"),
+    ("sony_a7_iii", "Cámara Sony Alpha A7 III Cuerpo", 890.0, 790.0, 1000.0, "Fotografía"),
+
+    # Moda y Sneakers (Vinted)
+    ("nike_dunk_panda", "Nike Dunk Low Retro Panda", 85.0, 65.0, 110.0, "Moda"),
+    ("air_jordan_1", "Air Jordan 1 Retro High OG", 130.0, 100.0, 170.0, "Moda"),
+    ("tnf_nuptse_1996", "The North Face Nuptse 1996", 160.0, 130.0, 210.0, "Moda"),
+
+    # Herramientas y Bricolaje (Milanuncios)
+    ("dewalt_xr_18v", "Taladro Percutor DeWalt XR 18V", 95.0, 75.0, 125.0, "Herramientas"),
+    ("dewalt_amoladora_18v", "Amoladora DeWalt 18V Brushless", 105.0, 85.0, 135.0, "Herramientas"),
+    ("cortacesped_john_deere", "Tractor Cortacésped John Deere", 1350.0, 1100.0, 1700.0, "Maquinaria")
+]
+
 def init_db():
-    """Inicializa la base de datos local (SQLite) si se usa en local."""
+    """Inicializa la base de datos local (SQLite) con tablas e índices optimizados."""
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -49,6 +110,12 @@ def init_db():
         )
     """)
     
+    # Índices para acelerar búsquedas de caché, historial y ordenaciones
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scans_url ON scans(url)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scans_score ON scans(score DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scans_platform ON scans(platform)")
+    
     # Tabla de productos recolectados para histórico
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS raw_listings (
@@ -64,6 +131,8 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_raw_keyword ON raw_listings(keyword)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_raw_created_at ON raw_listings(created_at DESC)")
     
     # Tabla de benchmarks de referencia
     cursor.execute("""
@@ -77,32 +146,35 @@ def init_db():
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_benchmarks_cat ON market_benchmarks(category)")
     
-    # Insertar benchmarks iniciales si está vacía
-    cursor.execute("SELECT COUNT(*) FROM market_benchmarks")
-    if cursor.fetchone()[0] == 0:
-        initial_benchmarks = [
-            ("ps5_disc", "PlayStation 5 (Con Lector)", 380.0, 320.0, 430.0, "Consolas"),
-            ("ps5_digital", "PlayStation 5 Digital", 330.0, 280.0, 370.0, "Consolas"),
-            ("ps5_slim", "PlayStation 5 Slim", 410.0, 360.0, 460.0, "Consolas"),
-            ("switch_oled", "Nintendo Switch OLED", 230.0, 190.0, 270.0, "Consolas"),
-            ("switch_v2", "Nintendo Switch V2", 160.0, 130.0, 190.0, "Consolas"),
-            ("xbox_series_x", "Xbox Series X 1TB", 360.0, 300.0, 410.0, "Consolas"),
-            ("steam_deck_512", "Steam Deck 512GB", 320.0, 270.0, 380.0, "Consolas"),
-            ("iphone_13_128", "Apple iPhone 13 128GB", 360.0, 300.0, 420.0, "Móviles"),
-            ("iphone_14_128", "Apple iPhone 14 128GB", 460.0, 400.0, 520.0, "Móviles"),
-            ("iphone_15_128", "Apple iPhone 15 128GB", 580.0, 510.0, 650.0, "Móviles"),
-            ("airpods_pro_2", "Apple AirPods Pro 2", 150.0, 120.0, 180.0, "Audio"),
-            ("rtx_4070", "Tarjeta Gráfica RTX 4070 12GB", 480.0, 420.0, 550.0, "Informática")
-        ]
-        cursor.executemany("""
-            INSERT INTO market_benchmarks 
-            (product_key, display_name, median_price, min_normal_price, max_normal_price, category)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, initial_benchmarks)
+    # Insertar o actualizar benchmarks iniciales en SQLite
+    cursor.executemany("""
+        INSERT OR REPLACE INTO market_benchmarks 
+        (product_key, display_name, median_price, min_normal_price, max_normal_price, category)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, DEFAULT_BENCHMARKS)
     
     conn.commit()
     conn.close()
+
+    # Si Supabase está conectado, asegurar que todos los benchmarks estén actualizados
+    if supabase_client:
+        try:
+            for bm in DEFAULT_BENCHMARKS:
+                supabase_client.table("market_benchmarks").upsert({
+                    "product_key": bm[0],
+                    "display_name": bm[1],
+                    "median_price": bm[2],
+                    "min_normal_price": bm[3],
+                    "max_normal_price": bm[4],
+                    "category": bm[5]
+                }).execute()
+            print("[Database] Benchmarks sincronizados con Supabase Cloud.")
+        except Exception as e:
+            print(f"[Supabase Sync] Aviso: {e}")
+
+
 
 def save_scan(data: Dict[str, Any]) -> int:
     """Guarda un análisis en Supabase (si está configurado) o en SQLite."""
@@ -241,53 +313,162 @@ def find_closest_benchmark(title: str) -> Optional[Dict[str, Any]]:
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
     
+    # 1. Reglas directas de alta precisión
+    # Consolas PlayStation
+    if "ps5" in title_lower or "playstation 5" in title_lower:
+        if "pro" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "ps5_pro"), None)
+            if match: return match
+        if "slim" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "ps5_slim"), None)
+            if match: return match
+        if "digital" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "ps5_digital"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "ps5_disc"), None)
+        if match: return match
+
+    if "ps4" in title_lower or "playstation 4" in title_lower:
+        if "pro" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "ps4_pro"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "ps4_slim"), None)
+        if match: return match
+
+    # Nintendo Switch
+    if "switch" in title_lower:
+        if "oled" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "switch_oled"), None)
+            if match: return match
+        if "lite" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "switch_lite"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "switch_v2"), None)
+        if match: return match
+
+    # Steam Deck & ROG Ally
+    if "steam deck" in title_lower:
+        if "oled" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "steam_deck_oled"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "steam_deck_512"), None)
+        if match: return match
+    if "rog ally" in title_lower or "asus rog" in title_lower:
+        match = next((r for r in rows if r["product_key"] == "asus_rog_ally"), None)
+        if match: return match
+
+    # Xbox
+    if "xbox" in title_lower:
+        if "series x" in title_lower or "series_x" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "xbox_series_x"), None)
+            if match: return match
+        if "series s" in title_lower or "series_s" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "xbox_series_s"), None)
+            if match: return match
+
+    # iPhones
+    if "iphone" in title_lower:
+        for gen in ["15", "14", "13", "12", "11"]:
+            if gen in title_lower:
+                if "pro max" in title_lower or "promax" in title_lower:
+                    match = next((r for r in rows if f"{gen}_promax" in r["product_key"] or f"{gen}_pro_max" in r["product_key"]), None)
+                    if not match:
+                        match = next((r for r in rows if f"{gen}_pro" in r["product_key"] or f"{gen}_128" in r["product_key"]), None)
+                    if match: return match
+                elif "pro" in title_lower:
+                    match = next((r for r in rows if f"{gen}_pro" in r["product_key"]), None)
+                    if not match:
+                        match = next((r for r in rows if f"{gen}_128" in r["product_key"]), None)
+                    if match: return match
+                else:
+                    match = next((r for r in rows if f"{gen}_128" in r["product_key"]), None)
+                    if match: return match
+
+    # Samsung
+    if "s24" in title_lower or "galaxy s24" in title_lower:
+        if "ultra" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "samsung_s24_ultra"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "samsung_s24"), None)
+        if match: return match
+    if "s23" in title_lower or "galaxy s23" in title_lower:
+        match = next((r for r in rows if r["product_key"] == "samsung_s23"), None)
+        if match: return match
+
+    # iPads y MacBooks
+    if "macbook" in title_lower:
+        if "pro" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "macbook_pro_m1"), None)
+            if match: return match
+        if "m2" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "macbook_air_m2"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "macbook_air_m1"), None)
+        if match: return match
+    if "ipad" in title_lower:
+        if "pro" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "ipad_pro_11_m2"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "ipad_air_m1"), None)
+        if match: return match
+
+    # Tarjetas Gráficas RTX
+    if "rtx" in title_lower:
+        for rtx in ["4080", "4070", "4060", "3060"]:
+            if rtx in title_lower:
+                match = next((r for r in rows if rtx in r["product_key"]), None)
+                if match: return match
+
+    # Audio
+    if "airpods" in title_lower:
+        if "max" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "airpods_max"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "airpods_pro_2"), None)
+        if match: return match
+    if "wh-1000xm5" in title_lower or "1000xm5" in title_lower or "wh1000xm5" in title_lower:
+        match = next((r for r in rows if r["product_key"] == "sony_wh1000xm5"), None)
+        if match: return match
+    if "wh-1000xm4" in title_lower or "1000xm4" in title_lower or "wh1000xm4" in title_lower:
+        match = next((r for r in rows if r["product_key"] == "sony_wh1000xm4"), None)
+        if match: return match
+
+    # Moda & Sneakers (Vinted)
+    if "dunk" in title_lower:
+        match = next((r for r in rows if "dunk" in r["product_key"]), None)
+        if match: return match
+    if "jordan" in title_lower:
+        match = next((r for r in rows if "jordan" in r["product_key"]), None)
+        if match: return match
+    if "nuptse" in title_lower or ("north face" in title_lower and ("chaqueta" in title_lower or "plumifero" in title_lower or "plumífero" in title_lower)):
+        match = next((r for r in rows if "nuptse" in r["product_key"]), None)
+        if match: return match
+
+    # Herramientas (Milanuncios)
+    if "dewalt" in title_lower:
+        if "amoladora" in title_lower or "radial" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "dewalt_amoladora_18v"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "dewalt_xr_18v"), None)
+        if match: return match
+    if "cortacesped" in title_lower or "cortacésped" in title_lower or "tractor" in title_lower:
+        match = next((r for r in rows if "cortacesped" in r["product_key"]), None)
+        if match: return match
+
+    # 2. Matching difuso por tokens como fallback
     best_match = None
     best_score = 0
-    
+    clean_words = set(re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]', ' ', title_lower).split())
+
     for row in rows:
-        key = row["product_key"]
-        name = row["display_name"].lower()
-        words = name.replace("(", "").replace(")", "").split()
-        matches = sum(1 for w in words if w in title_lower)
-        
-        if "ps5" in title_lower or "playstation 5" in title_lower:
-            if "slim" in title_lower and "slim" in key:
-                return row
-            if "digital" in title_lower and "digital" in key:
-                return row
-            if ("disco" in title_lower or "lector" in title_lower or "chasis" in title_lower) and "disc" in key:
-                return row
-        
-        if "iphone 13" in title_lower and "13" in key:
-            return row
-        if "iphone 14" in title_lower and "14" in key:
-            return row
-        if "iphone 15" in title_lower and "15" in key:
-            return row
-        if "switch" in title_lower:
-            if "oled" in title_lower and "oled" in key:
-                return row
-            if "v2" in title_lower and "v2" in key:
-                return row
-
-        # Heurísticas de Moda y Sneakers (Vinted)
-        if ("dunk" in title_lower or "nike dunk" in title_lower) and "dunk" in key:
-            return row
-        if ("jordan" in title_lower or "air jordan" in title_lower) and "jordan" in key:
-            return row
-        if ("nuptse" in title_lower or "north face" in title_lower) and "nuptse" in key:
-            return row
-
-        # Heurísticas de Herramientas y Motor (Milanuncios)
-        if ("dewalt" in title_lower or "taladro" in title_lower) and "dewalt" in key:
-            return row
-        if ("tractor" in title_lower or "cortacesped" in title_lower) and "cortacesped" in key:
-            return row
-                
-        if matches > best_score and matches >= 2:
-            best_score = matches
+        name_words = set(re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]', ' ', row["display_name"].lower()).split())
+        common = clean_words.intersection(name_words)
+        # Quitar stop-words comunes
+        common = [w for w in common if len(w) > 2 and w not in ["con", "para", "del", "por", "las", "los", "una", "uno"]]
+        if len(common) > best_score and len(common) >= 2:
+            best_score = len(common)
             best_match = row
-            
+
     return best_match
 
 def get_recent_scans(limit: int = 10) -> List[Dict[str, Any]]:
@@ -330,22 +511,57 @@ def get_all_scans_admin(limit: int = 100) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 def get_admin_stats() -> Dict[str, Any]:
-    """Calcula métricas clave para el panel de administración."""
-    scans = get_all_scans_admin(limit=500)
-    total_items = len(scans)
-    
-    bargains_count = sum(1 for s in scans if float(s.get("score", 0)) >= 7.5)
-    scams_count = sum(1 for s in scans if s.get("risk_level") == "ALTO" or "Estafa" in str(s.get("verdict", "")))
-    total_savings = sum(max(0.0, float(s.get("savings", 0))) for s in scans)
-    avg_score = round(sum(float(s.get("score", 0)) for s in scans) / total_items, 1) if total_items > 0 else 0.0
+    """Calcula métricas clave para el panel de administración usando consultas SQL agregadas ultra-rápidas."""
+    if supabase_client:
+        try:
+            # En Supabase obtenemos el total y calculamos
+            scans = get_all_scans_admin(limit=1000)
+            total_items = len(scans)
+            bargains_count = sum(1 for s in scans if float(s.get("score", 0)) >= 7.5)
+            scams_count = sum(1 for s in scans if s.get("risk_level") == "ALTO" or "Estafa" in str(s.get("verdict", "")))
+            total_savings = sum(max(0.0, float(s.get("savings", 0))) for s in scans)
+            avg_score = round(sum(float(s.get("score", 0)) for s in scans) / total_items, 1) if total_items > 0 else 0.0
+            return {
+                "total_scans": total_items,
+                "bargains_count": bargains_count,
+                "scams_flagged": scams_count,
+                "total_savings": round(total_savings, 2),
+                "average_score": avg_score
+            }
+        except Exception as e:
+            print(f"[Supabase Stats] Error: {e}")
 
+    # En SQLite usamos agregación SQL pura (O(1) en memoria)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total_scans,
+            COALESCE(SUM(CASE WHEN score >= 7.5 THEN 1 ELSE 0 END), 0) as bargains_count,
+            COALESCE(SUM(CASE WHEN risk_level = 'ALTO' OR verdict LIKE '%Estafa%' THEN 1 ELSE 0 END), 0) as scams_flagged,
+            COALESCE(SUM(CASE WHEN savings > 0 THEN savings ELSE 0 END), 0) as total_savings,
+            COALESCE(AVG(score), 0.0) as average_score
+        FROM scans
+    """)
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "total_scans": row["total_scans"] or 0,
+            "bargains_count": row["bargains_count"] or 0,
+            "scams_flagged": row["scams_flagged"] or 0,
+            "total_savings": round(float(row["total_savings"] or 0.0), 2),
+            "average_score": round(float(row["average_score"] or 0.0), 1)
+        }
     return {
-        "total_scans": total_items,
-        "bargains_count": bargains_count,
-        "scams_flagged": scams_count,
-        "total_savings": round(total_savings, 2),
-        "average_score": avg_score
+        "total_scans": 0,
+        "bargains_count": 0,
+        "scams_flagged": 0,
+        "total_savings": 0.0,
+        "average_score": 0.0
     }
+
 
 def get_cached_scan(url: str, max_age_hours: int = 24) -> Optional[Dict[str, Any]]:
     """Busca si la URL ya fue analizada recientemente para servir el resultado desde caché."""

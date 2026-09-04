@@ -196,6 +196,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return "";
+        return String(unsafe)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     // 7. Renderizar tabla en pantalla
     function renderTable() {
         tableBody.innerHTML = "";
@@ -235,10 +245,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 : `<span class="savings-neg">${savings.toFixed(0)} € (+${Math.abs(savingsPct)}%)</span>`;
 
             // Formato de Riesgo
-            const riskClass = (item.risk_level || "BAJO").toLowerCase();
-            const platformName = (item.platform || "wallapop").toUpperCase();
-
-            const safeTitle = (item.title || "").replace(/'/g, "\\'");
+            const riskClass = escapeHtml((item.risk_level || "BAJO").toLowerCase());
+            const platformName = escapeHtml((item.platform || "wallapop").toUpperCase());
+            const safeTitle = escapeHtml(item.title || "Sin título");
+            const safeProduct = escapeHtml(item.normalized_product || "General");
+            const safeUrl = escapeHtml(item.url || "#");
+            const safeId = parseInt(item.id, 10) || 0;
 
             tr.innerHTML = `
                 <td>
@@ -247,33 +259,33 @@ document.addEventListener("DOMContentLoaded", () => {
                     </span>
                 </td>
                 <td class="item-title-cell">
-                    <a href="${item.url || '#'}" target="_blank" class="item-title-link" title="${item.title}">
-                        ${item.title}
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="item-title-link" title="${safeTitle}">
+                        ${safeTitle}
                     </a>
-                    <span class="item-subtext">📦 ${item.normalized_product || 'General'} · <strong>${platformName}</strong></span>
+                    <span class="item-subtext">📦 ${safeProduct} · <strong>${platformName}</strong></span>
                 </td>
                 <td>
-                    <div class="price-current">${item.price.toFixed(0)} €</div>
+                    <div class="price-current">${parseFloat(item.price || 0).toFixed(0)} €</div>
                 </td>
                 <td>
-                    <div class="price-bench">${item.market_price ? item.market_price.toFixed(0) + ' €' : '-'}</div>
+                    <div class="price-bench">${item.market_price ? parseFloat(item.market_price).toFixed(0) + ' €' : '-'}</div>
                 </td>
                 <td>${savingsHtml}</td>
                 <td>
-                    <div style="font-weight: 600;">⭐ ${item.seller_rating || 5.0}</div>
-                    <div class="item-subtext">${item.seller_reviews || 0} reviews</div>
+                    <div style="font-weight: 600;">⭐ ${parseFloat(item.seller_rating || 5.0).toFixed(1)}</div>
+                    <div class="item-subtext">${parseInt(item.seller_reviews || 0, 10)} reviews</div>
                 </td>
                 <td>
                     <span style="font-size: 0.8rem;">${item.has_shipping ? '✅ Disponible' : '🚫 En mano'}</span>
                 </td>
                 <td>
-                    <span class="risk-badge risk-${riskClass}">${item.risk_level || 'NORMAL'}</span>
+                    <span class="risk-badge risk-${riskClass}">${escapeHtml(item.risk_level || 'NORMAL')}</span>
                 </td>
                 <td style="white-space: nowrap;">
-                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn-external" title="Abrir anuncio original">
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="btn-external" title="Abrir anuncio original">
                         ↗ Ver
                     </a>
-                    <button onclick="deleteScan(${item.id}, '${safeTitle}')" class="btn-delete" title="Eliminar de la base de datos">
+                    <button onclick="deleteScan(${safeId}, '${safeTitle.replace(/'/g, "\\'")}')" class="btn-delete" title="Eliminar de la base de datos">
                         🗑️
                     </button>
                 </td>

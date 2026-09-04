@@ -18,6 +18,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -25,10 +26,10 @@
 
     <header class="header">
         <div class="container nav-container">
-            <div class="logo">
+            <a href="/" class="logo" style="text-decoration: none;">
                 <span class="logo-badge">🔥</span>
                 <span class="logo-text">Ganga<span>Check</span><span class="tld">.es</span></span>
-            </div>
+            </a>
             <div class="header-tagline">Tasador y Detector de Gangas</div>
         </div>
     </header>
@@ -59,11 +60,12 @@
                         placeholder="Pega aquí el enlace de Wallapop, Vinted o Milanuncios..." 
                         required
                         autocomplete="off"
+                        aria-label="Enlace del anuncio para analizar"
                     >
-                    <button type="button" id="paste-btn" class="btn-paste" title="Pegar del portapapeles">
+                    <button type="button" id="paste-btn" class="btn-paste" title="Pegar del portapapeles" aria-label="Pegar desde portapapeles">
                         Pegar
                     </button>
-                    <button type="submit" id="submit-btn" class="btn-submit">
+                    <button type="submit" id="submit-btn" class="btn-submit" aria-label="Comenzar escaneo">
                         <span class="btn-text">Escanear</span>
                         <span class="btn-loader hidden"></span>
                     </button>
@@ -96,6 +98,16 @@
             </div>
         </section>
 
+        <!-- Error Card (In-App en lugar de alert()) -->
+        <div id="error-card" class="error-card hidden">
+            <div class="error-icon">⚠️</div>
+            <div class="error-content">
+                <h4 id="error-title">No pudimos analizar este enlace</h4>
+                <p id="error-desc">Asegúrate de que la URL sea un anuncio activo de Wallapop, Vinted o Milanuncios.</p>
+            </div>
+            <button id="btn-close-error" class="btn-close-error" aria-label="Cerrar mensaje de error">&times;</button>
+        </div>
+
         <!-- Loading State -->
         <div id="loading-card" class="loading-card hidden">
             <div class="scanner-laser"></div>
@@ -108,19 +120,28 @@
         <section id="result-section" class="result-section hidden">
             <div class="result-card">
                 
-                <!-- Card Header -->
-                <div class="result-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
-                    <div class="product-meta">
-                        <span id="res-category" class="category-badge">Consolas</span>
-                        <h2 id="res-title" class="res-product-title">Título del Producto</h2>
-                        <div class="seller-inline">
-                            <span id="res-seller-name">Vendedor</span> · 
-                            <span id="res-seller-stars">⭐ 4.9</span> 
-                            (<span id="res-seller-reviews">32</span> valoraciones) · 
-                            <span id="res-shipping-status">📦 Envíos activos</span>
+                <!-- Card Header with Product Image and Meta -->
+                <div class="result-header-wrapper">
+                    <div class="result-product-hero">
+                        <div id="res-image-wrapper" class="product-thumb-box">
+                            <img id="res-product-img" src="" alt="Imagen del anuncio" class="product-thumb-img" onerror="this.style.display='none';">
+                            <div class="product-thumb-placeholder">📦</div>
+                        </div>
+                        <div class="product-meta">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <span id="res-category" class="category-badge">Consolas</span>
+                                <span id="res-confidence-badge" class="confidence-badge">Verificado</span>
+                            </div>
+                            <h2 id="res-title" class="res-product-title">Título del Producto</h2>
+                            <div class="seller-inline">
+                                <span id="res-seller-name">Vendedor</span> · 
+                                <span id="res-seller-stars">⭐ 4.9</span> 
+                                (<span id="res-seller-reviews">32</span> valoraciones) · 
+                                <span id="res-shipping-status">📦 Envíos activos</span>
+                            </div>
                         </div>
                     </div>
-                    <button id="btn-share-result" class="btn-share" title="Compartir o copiar resultado">
+                    <button id="btn-share-result" class="btn-share" title="Compartir o copiar resultado" aria-label="Compartir resultado">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
                         Compartir / Copiar
                     </button>

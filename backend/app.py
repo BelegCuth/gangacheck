@@ -1,49 +1,52 @@
 import os
+import secrets
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from typing import Optional
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, HttpUrl
 
-from config import HOST, PORT, BASE_DIR
-from database import init_db, save_scan, get_recent_scans
-from extractor import WallapopExtractor, UniversalExtractor
+from config import (
+    HOST, PORT, BASE_DIR, ALLOWED_ORIGINS,
+    ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
+)
+from database import (
+    init_db, save_scan, get_recent_scans, get_all_scans_admin, get_admin_stats,
+    get_cached_scan, delete_scan, get_all_benchmarks, add_or_update_benchmark
+)
+from extractor import UniversalExtractor
 from scorer import DealScorer
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inicialización en arranque
+    init_db()
+    print("[GangaCheck] Base de datos e índices inicializados correctamente.")
+    yield
+    # Limpieza en apagado si fuera necesario
 
 app = FastAPI(
     title="GangaCheck API",
-    description="Motor de análisis y tasación de chollos para gangacheck.es",
-    version="1.0.0"
+    description="Motor de análisis, auditoría y tasación de chollos para gangacheck.es",
+    version="2.0.0",
+    lifespan=lifespan
 )
 
-# Permitir CORS para despliegues en Vercel/Cloudflare
+# Configuración CORS segura
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS else ["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 class AnalyzeRequest(BaseModel):
     url: str
-
-@app.on_event("startup")
-def startup_event():
-    init_db()
-    print("[GangaCheck] Base de datos inicializada correctamente.")
-
-from fastapi import FastAPI, HTTPException, Header
-from typing import Optional
-
-from config import HOST, PORT, BASE_DIR, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
-from database import (
-    init_db, save_scan, get_recent_scans, get_all_scans_admin, get_admin_stats,
-    get_cached_scan, delete_scan, get_all_benchmarks, add_or_update_benchmark
-)
-from extractor import WallapopExtractor, UniversalExtractor
-from scorer import DealScorer
 
 class AdminLoginRequest(BaseModel):
     username: str
@@ -57,15 +60,24 @@ class BenchmarkRequest(BaseModel):
     max_normal_price: float
     category: str = "General"
 
+# --- ENDPOINT PÚBLICO PRINCIPAL: ANÁLISIS DE ANUNCIO ---
+
 @app.post("/api/analyze")
 async def analyze_url(req: AnalyzeRequest):
     url = req.url.strip()
     if not url:
         raise HTTPException(status_code=400, detail="Debes proporcionar una URL válida.")
 
-    # 1. Comprobar si ya existe en caché reciente (< 24h)
+    # 1. Validación estricta de URL y mitigación de SSRF
+    if not UniversalExtractor.is_valid_url(url):
+        raise HTTPException(
+            status_code=400,
+            detail="URL no compatible. Por favor introduce un enlace válido de Wallapop, Vinted o Milanuncios."
+        )
+
+    # 2. Comprobar si ya existe en caché reciente (< 24h)
     cached = get_cached_scan(url)
-    if cached and not "test-" in url.lower():
+    if cached and "test-" not in url.lower():
         details = cached.get("details", {})
         evaluation = details.get("evaluation") or {
             "score": cached.get("score", 0.0),
@@ -102,13 +114,13 @@ async def analyze_url(req: AnalyzeRequest):
             "evaluation": evaluation
         }
 
-    # 2. Extraer datos con UniversalExtractor (Wallapop, Vinted o Milanuncios)
+    # 3. Extraer datos con UniversalExtractor (Wallapop, Vinted o Milanuncios)
     item_data = UniversalExtractor.fetch_item_data(url)
     
-    # 3. Evaluar y calcular puntuación
+    # 4. Evaluar y calcular puntuación
     evaluation = DealScorer.evaluate(item_data)
     
-    # 4. Preparar registro para la base de datos
+    # 5. Preparar registro para la base de datos
     scan_record = {
         "platform": item_data.get("platform", "wallapop"),
         "item_id": item_data.get("item_id", ""),
@@ -145,21 +157,27 @@ async def analyze_url(req: AnalyzeRequest):
     }
 
 @app.get("/api/history")
-async def history(limit: int = 8):
-    return {"scans": get_recent_scans(limit=limit)}
+async def history(limit: int = 12):
+    return {"scans": get_recent_scans(limit=min(limit, 50))}
 
 # --- ENDPOINTS PANEL DE ADMINISTRACIÓN (PROTEGIDOS) ---
+
+def safe_compare(a: str, b: str) -> bool:
+    """Compara de forma segura dos cadenas evitando ataques de tiempo y soportando caracteres UTF-8."""
+    return secrets.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 def verify_token(authorization: Optional[str]):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Acceso no autorizado: Token requerido")
     token = authorization.split(" ")[1]
-    if token != ADMIN_SECRET_KEY:
+    if not safe_compare(token, ADMIN_SECRET_KEY):
         raise HTTPException(status_code=403, detail="Sesión expirada o token no válido")
 
 @app.post("/api/admin/login")
 async def admin_login(req: AdminLoginRequest):
-    if req.username == ADMIN_USERNAME and req.password == ADMIN_PASSWORD:
+    user_ok = safe_compare(req.username.strip(), ADMIN_USERNAME)
+    pass_ok = safe_compare(req.password, ADMIN_PASSWORD)
+    if user_ok and pass_ok:
         return {
             "success": True,
             "token": ADMIN_SECRET_KEY,
@@ -197,7 +215,6 @@ async def admin_create_benchmark(req: BenchmarkRequest, authorization: Optional[
     )
     return {"success": ok}
 
-
 # --- SERVIR ARCHIVOS ESTÁTICOS Y PÁGINAS DEL FRONTEND ---
 def get_frontend_file(filename: str) -> Path:
     candidates = [
@@ -233,11 +250,12 @@ async def serve_admin():
     path = get_frontend_file("admin.html")
     if path.exists():
         return FileResponse(path)
-    raise HTTPException(status_code=404, detail=f"admin.html no encontrado en el servidor")
+    raise HTTPException(status_code=404, detail="admin.html no encontrado en el servidor")
 
 if __name__ == "__main__":
     import uvicorn
     print(f"🚀 GangaCheck.es corriendo en http://localhost:{PORT}")
     uvicorn.run("app:app", host=HOST, port=PORT, reload=True)
+
 
 

@@ -60,6 +60,34 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    const errorCard = document.getElementById("error-card");
+    const errorTitle = document.getElementById("error-title");
+    const errorDesc = document.getElementById("error-desc");
+    const btnCloseError = document.getElementById("btn-close-error");
+
+    if (btnCloseError && errorCard) {
+        btnCloseError.addEventListener("click", () => {
+            errorCard.classList.add("hidden");
+        });
+    }
+
+    function showError(title, message) {
+        if (errorCard) {
+            errorTitle.textContent = title || "Error al analizar";
+            errorDesc.textContent = message || "Revisa la URL proporcionada e inténtalo de nuevo.";
+            errorCard.classList.remove("hidden");
+            errorCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+            alert(`${title}: ${message}`);
+        }
+    }
+
+    function hideError() {
+        if (errorCard) {
+            errorCard.classList.add("hidden");
+        }
+    }
+
     // 3. Envío del formulario
     scanForm.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -71,6 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Función principal de escaneo
     async function runScan(url) {
+        hideError();
         loadingCard.classList.remove("hidden");
         resultSection.classList.add("hidden");
         submitBtn.disabled = true;
@@ -83,18 +112,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({ url: url })
             });
 
-            if (!response.ok) {
-                throw new Error("Error en la respuesta del servidor");
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                const detailMsg = data.detail || "No se pudo procesar este enlace. Comprueba que pertenezca a Wallapop, Vinted o Milanuncios.";
+                showError("No pudimos analizar el anuncio", detailMsg);
+                return;
             }
 
-            const data = await response.json();
             currentScan = data;
             renderResults(data);
             loadRecentScans();
 
         } catch (error) {
             console.error("Error al analizar:", error);
-            alert("Hubo un problema al analizar el enlace. Por favor verifica que la URL sea válida o prueba con los ejemplos preconfigurados.");
+            showError("Problema de conexión", "No se pudo comunicar con el servidor de análisis. Verifica tu conexión o prueba con los ejemplos rápidos.");
         } finally {
             loadingCard.classList.add("hidden");
             submitBtn.disabled = false;
@@ -108,14 +140,41 @@ document.addEventListener("DOMContentLoaded", () => {
         const ev = data.evaluation;
         const seller = item.seller || {};
 
+        // Imagen del producto
+        const productImg = document.getElementById("res-product-img");
+        if (productImg) {
+            const images = item.images || [];
+            if (images.length > 0 && images[0]) {
+                productImg.src = images[0];
+                productImg.style.display = "block";
+            } else {
+                productImg.style.display = "none";
+            }
+        }
+
         // Meta del producto y plataforma
         const platform = (item.platform || "wallapop").toUpperCase();
         document.getElementById("res-category").textContent = `${platform} · ${ev.category || "Segunda Mano"}`;
         document.getElementById("res-title").textContent = item.title;
         document.getElementById("res-seller-name").textContent = seller.name || "Vendedor";
-        document.getElementById("res-seller-stars").textContent = `⭐ ${seller.rating || 4.8}`;
+        document.getElementById("res-seller-stars").textContent = `⭐ ${parseFloat(seller.rating || 4.8).toFixed(1)}`;
         document.getElementById("res-seller-reviews").textContent = seller.reviews_count || 0;
         document.getElementById("res-shipping-status").textContent = item.shipping_available ? "📦 Envíos activos" : "🚫 Solo en mano";
+
+        // Badge de Confianza del Precio
+        const confBadge = document.getElementById("res-confidence-badge");
+        if (confBadge) {
+            if (ev.ai_used) {
+                confBadge.textContent = "✨ Tasación por IA (Gemini)";
+                confBadge.className = "confidence-badge conf-ai";
+            } else if (ev.confidence && ev.confidence.includes("ALTA")) {
+                confBadge.textContent = "🏷️ Catálogo Oficial";
+                confBadge.className = "confidence-badge conf-official";
+            } else {
+                confBadge.textContent = "📊 Estimación Contextual";
+                confBadge.className = "confidence-badge conf-estimate";
+            }
+        }
 
         // Precios
         document.getElementById("res-item-price").textContent = `${ev.item_price.toFixed(0)} €`;
@@ -125,8 +184,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (ev.savings > 0) {
             savingsEl.textContent = `Ahorras ${ev.savings.toFixed(0)} € (-${Math.round(ev.savings_pct)}%)`;
             savingsEl.className = "metric-value price-savings";
+            savingsEl.style.color = "";
         } else {
             savingsEl.textContent = `+${Math.abs(ev.savings).toFixed(0)} € (+${Math.abs(Math.round(ev.savings_pct))}%)`;
+            savingsEl.className = "metric-value";
             savingsEl.style.color = "#EF4444";
         }
 
@@ -193,13 +254,19 @@ document.addEventListener("DOMContentLoaded", () => {
             consList.innerHTML = "<li>No se han detectado señales negativas.</li>";
         }
 
-        // Afiliación inteligente
+        // Afiliación inteligente con URL dinámica
         const affBox = document.getElementById("affiliate-box");
+        const affBtn = document.getElementById("affiliate-btn");
         if (ev.affiliate) {
             affBox.classList.remove("hidden");
             document.getElementById("affiliate-title").textContent = ev.affiliate.title;
             document.getElementById("affiliate-desc").textContent = ev.affiliate.description;
-            document.getElementById("affiliate-btn").textContent = ev.affiliate.button_text;
+            if (affBtn) {
+                affBtn.textContent = ev.affiliate.button_text || "Ver alternativa en Amazon";
+                if (ev.affiliate.url) {
+                    affBtn.href = ev.affiliate.url;
+                }
+            }
         } else {
             affBox.classList.add("hidden");
         }

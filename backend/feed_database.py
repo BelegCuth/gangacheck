@@ -1,6 +1,9 @@
 import sys
 import random
 from pathlib import Path
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from database import save_scan, get_all_scans_admin

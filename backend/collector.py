@@ -1,5 +1,10 @@
+import sys
 import time
 import json
+from pathlib import Path
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 from typing import List, Dict, Any
 from urllib.parse import quote_plus
 from config import BASE_DIR

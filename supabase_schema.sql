@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS scans (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Índices de alto rendimiento para PostgreSQL
+CREATE INDEX IF NOT EXISTS idx_scans_url ON scans(url);
+CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scans_score ON scans(score DESC);
+CREATE INDEX IF NOT EXISTS idx_scans_platform ON scans(platform);
+
 -- 2. Tabla de Precios de Referencia (Benchmarks del Mercado)
 CREATE TABLE IF NOT EXISTS market_benchmarks (
     product_key TEXT PRIMARY KEY,
@@ -35,6 +41,8 @@ CREATE TABLE IF NOT EXISTS market_benchmarks (
     category TEXT,
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_benchmarks_cat ON market_benchmarks(category);
 
 -- 3. Tabla de Recolección de Anuncios en Crudo (Histórico Continuo)
 CREATE TABLE IF NOT EXISTS raw_listings (
@@ -50,22 +58,69 @@ CREATE TABLE IF NOT EXISTS raw_listings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_raw_keyword ON raw_listings(keyword);
+CREATE INDEX IF NOT EXISTS idx_raw_created_at ON raw_listings(created_at DESC);
+
 -- 4. Datos Iniciales de Benchmarks de Mercado
 INSERT INTO market_benchmarks (product_key, display_name, median_price, min_normal_price, max_normal_price, category)
 VALUES
+    -- Consolas
     ('ps5_disc', 'PlayStation 5 (Con Lector)', 380.0, 320.0, 430.0, 'Consolas'),
     ('ps5_digital', 'PlayStation 5 Digital', 330.0, 280.0, 370.0, 'Consolas'),
-    ('ps5_slim', 'PlayStation 5 Slim', 410.0, 360.0, 460.0, 'Consolas'),
+    ('ps5_slim', 'PlayStation 5 Slim 1TB', 410.0, 360.0, 460.0, 'Consolas'),
+    ('ps5_pro', 'PlayStation 5 Pro 2TB', 680.0, 600.0, 750.0, 'Consolas'),
+    ('ps4_pro', 'PlayStation 4 Pro 1TB', 140.0, 110.0, 170.0, 'Consolas'),
+    ('ps4_slim', 'PlayStation 4 Slim 500GB', 100.0, 80.0, 130.0, 'Consolas'),
     ('switch_oled', 'Nintendo Switch OLED', 230.0, 190.0, 270.0, 'Consolas'),
     ('switch_v2', 'Nintendo Switch V2', 160.0, 130.0, 190.0, 'Consolas'),
+    ('switch_lite', 'Nintendo Switch Lite', 110.0, 90.0, 135.0, 'Consolas'),
     ('xbox_series_x', 'Xbox Series X 1TB', 360.0, 300.0, 410.0, 'Consolas'),
+    ('xbox_series_s', 'Xbox Series S 512GB', 175.0, 140.0, 210.0, 'Consolas'),
     ('steam_deck_512', 'Steam Deck 512GB', 320.0, 270.0, 380.0, 'Consolas'),
+    ('steam_deck_oled', 'Steam Deck OLED 512GB', 440.0, 390.0, 500.0, 'Consolas'),
+    ('asus_rog_ally', 'ASUS ROG Ally Z1 Extreme', 420.0, 360.0, 480.0, 'Consolas'),
+    -- Móviles & Tablets
+    ('iphone_11_128', 'Apple iPhone 11 128GB', 220.0, 180.0, 260.0, 'Móviles'),
+    ('iphone_12_128', 'Apple iPhone 12 128GB', 280.0, 230.0, 330.0, 'Móviles'),
     ('iphone_13_128', 'Apple iPhone 13 128GB', 360.0, 300.0, 420.0, 'Móviles'),
+    ('iphone_13_pro', 'Apple iPhone 13 Pro 128GB', 460.0, 400.0, 520.0, 'Móviles'),
     ('iphone_14_128', 'Apple iPhone 14 128GB', 460.0, 400.0, 520.0, 'Móviles'),
+    ('iphone_14_pro', 'Apple iPhone 14 Pro 128GB', 590.0, 520.0, 670.0, 'Móviles'),
     ('iphone_15_128', 'Apple iPhone 15 128GB', 580.0, 510.0, 650.0, 'Móviles'),
+    ('iphone_15_pro', 'Apple iPhone 15 Pro 128GB', 740.0, 670.0, 820.0, 'Móviles'),
+    ('iphone_15_promax', 'Apple iPhone 15 Pro Max 256GB', 860.0, 780.0, 950.0, 'Móviles'),
+    ('samsung_s23', 'Samsung Galaxy S23 128GB', 390.0, 330.0, 450.0, 'Móviles'),
+    ('samsung_s24', 'Samsung Galaxy S24 256GB', 520.0, 450.0, 590.0, 'Móviles'),
+    ('samsung_s24_ultra', 'Samsung Galaxy S24 Ultra 256GB', 790.0, 700.0, 890.0, 'Móviles'),
+    ('ipad_air_m1', 'Apple iPad Air M1 (5ª Gen)', 420.0, 360.0, 480.0, 'Tablets'),
+    ('ipad_pro_11_m2', 'Apple iPad Pro 11 M2', 640.0, 560.0, 720.0, 'Tablets'),
+    -- Informática & Portátiles
+    ('macbook_air_m1', 'Apple MacBook Air M1 256GB', 490.0, 430.0, 560.0, 'Portátiles'),
+    ('macbook_air_m2', 'Apple MacBook Air M2 256GB', 680.0, 600.0, 760.0, 'Portátiles'),
+    ('macbook_pro_m1', 'Apple MacBook Pro 14 M1 Pro', 950.0, 850.0, 1100.0, 'Portátiles'),
+    ('rtx_4060', 'Tarjeta Gráfica RTX 4060 8GB', 250.0, 220.0, 290.0, 'Informática'),
+    ('rtx_4070', 'Tarjeta Gráfica RTX 4070 12GB', 480.0, 420.0, 550.0, 'Informática'),
+    ('rtx_4080', 'Tarjeta Gráfica RTX 4080 16GB', 830.0, 740.0, 930.0, 'Informática'),
+    ('rtx_3060', 'Tarjeta Gráfica RTX 3060 12GB', 190.0, 160.0, 225.0, 'Informática'),
+    -- Audio & Fotografía
     ('airpods_pro_2', 'Apple AirPods Pro 2', 150.0, 120.0, 180.0, 'Audio'),
-    ('rtx_4070', 'Tarjeta Gráfica RTX 4070 12GB', 480.0, 420.0, 550.0, 'Informática')
-ON CONFLICT (product_key) DO NOTHING;
+    ('airpods_max', 'Apple AirPods Max', 340.0, 290.0, 395.0, 'Audio'),
+    ('sony_wh1000xm5', 'Auriculares Sony WH-1000XM5', 220.0, 180.0, 260.0, 'Audio'),
+    ('sony_wh1000xm4', 'Auriculares Sony WH-1000XM4', 145.0, 120.0, 175.0, 'Audio'),
+    ('sony_a7_iii', 'Cámara Sony Alpha A7 III Cuerpo', 890.0, 790.0, 1000.0, 'Fotografía'),
+    -- Moda & Herramientas
+    ('nike_dunk_panda', 'Nike Dunk Low Retro Panda', 85.0, 65.0, 110.0, 'Moda'),
+    ('air_jordan_1', 'Air Jordan 1 Retro High OG', 130.0, 100.0, 170.0, 'Moda'),
+    ('tnf_nuptse_1996', 'The North Face Nuptse 1996', 160.0, 130.0, 210.0, 'Moda'),
+    ('dewalt_xr_18v', 'Taladro Percutor DeWalt XR 18V', 95.0, 75.0, 125.0, 'Herramientas'),
+    ('dewalt_amoladora_18v', 'Amoladora DeWalt 18V Brushless', 105.0, 85.0, 135.0, 'Herramientas'),
+    ('cortacesped_john_deere', 'Tractor Cortacésped John Deere', 1350.0, 1100.0, 1700.0, 'Maquinaria')
+ON CONFLICT (product_key) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    median_price = EXCLUDED.median_price,
+    min_normal_price = EXCLUDED.min_normal_price,
+    max_normal_price = EXCLUDED.max_normal_price,
+    category = EXCLUDED.category;
 
 -- 5. Habilitar lectura pública (Row Level Security permisiva para lectura de la web)
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
@@ -77,3 +132,4 @@ CREATE POLICY "Inserción pública de scans" ON scans FOR INSERT WITH CHECK (tru
 CREATE POLICY "Lectura pública de benchmarks" ON market_benchmarks FOR SELECT USING (true);
 CREATE POLICY "Lectura pública de raw_listings" ON raw_listings FOR SELECT USING (true);
 CREATE POLICY "Inserción de raw_listings" ON raw_listings FOR ALL USING (true);
+
