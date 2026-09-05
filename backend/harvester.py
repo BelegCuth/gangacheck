@@ -156,6 +156,69 @@ class MarketHarvester:
         return listings
 
     @classmethod
+    def fetch_milanuncios(cls, keyword: str, limit: int = 40) -> List[Dict[str, Any]]:
+        """
+        Consulta Milanuncios para obtener anuncios reales de búsqueda.
+        """
+        listings = []
+        slug_kw = re.sub(r'[^a-zA-Z0-9]+', '-', keyword.strip().lower()).strip('-')
+        search_url = f"https://www.milanuncios.com/anuncios/{slug_kw}.htm"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Accept-Language": "es-ES,es;q=0.9",
+        }
+        try:
+            session = cffi_requests.Session(impersonate="chrome120") if HAS_CURL_CFFI else cffi_requests.Session()
+            resp = session.get(search_url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                html = resp.text
+                m_props = re.search(r'window\.__INITIAL_PROPS__\s*=\s*JSON\.parse\("((?:[^"\\]|\\.)*)"\);', html)
+                if m_props:
+                    data = json.loads(json.loads(f'"{m_props.group(1)}"'))
+                    ads = data.get("adListPagination", {}).get("adList", {}).get("ads", [])
+                    for a in ads[:limit]:
+                        ad_id = str(a.get("id", ""))
+                        title = a.get("title") or keyword
+                        price_obj = a.get("price", {})
+                        cash_val = price_obj.get("cashPrice", {}).get("value") if isinstance(price_obj, dict) else None
+                        try:
+                            price_val = float(cash_val) if cash_val is not None else 0.0
+                        except (ValueError, TypeError):
+                            price_val = 0.0
+
+                        ad_url = a.get("url", "")
+                        if ad_url and not ad_url.startswith("http"):
+                            ad_url = f"https://www.milanuncios.com{ad_url}"
+
+                        pictures = a.get("pictures", [])
+                        image_url = ""
+                        if pictures and isinstance(pictures, list):
+                            image_url = pictures[0].get("url", "") if isinstance(pictures[0], dict) else str(pictures[0])
+
+                        user_info = a.get("user") or {}
+                        seller_name = user_info.get("name") or "Vendedor Milanuncios"
+                        seller_reviews = int(user_info.get("reviewsCount", 0) or 0)
+
+                        if price_val > 0:
+                            listings.append({
+                                "id": f"milanuncios_{ad_id}",
+                                "platform": "milanuncios",
+                                "title": title.strip(),
+                                "price": price_val,
+                                "keyword": keyword,
+                                "seller_name": seller_name,
+                                "seller_reviews": seller_reviews,
+                                "has_shipping": bool(a.get("isShippable", True)),
+                                "url": ad_url,
+                                "image_url": image_url
+                            })
+                print(f"[Harvester] Milanuncios: {len(listings)} anuncios obtenidos para '{keyword}'.")
+        except Exception as e:
+            print(f"[Harvester] Error al consultar Milanuncios para '{keyword}': {e}")
+
+        return listings
+
+    @classmethod
     def filter_noise_and_outliers(cls, listings: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
         """
         Elimina anuncios trampa (0€, 1€, precios simbólicos), descarta piezas rotas y filtra valores extremos.
@@ -307,6 +370,9 @@ class MarketHarvester:
 
         if platform in ("vinted", "all"):
             raw_results.extend(cls.fetch_vinted(kw_clean, limit=limit))
+
+        if platform in ("milanuncios", "all"):
+            raw_results.extend(cls.fetch_milanuncios(kw_clean, limit=limit))
 
         if platform in ("wallapop", "all"):
             raw_results.extend(cls.fetch_wallapop(kw_clean, limit=limit))
