@@ -32,14 +32,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const tableCountLabel = document.getElementById("table-count-label");
 
     // Tabs & Views
+    const tabBtnMultiweb = document.getElementById("tab-btn-multiweb");
     const tabBtnScans = document.getElementById("tab-btn-scans");
     const tabBtnRaw = document.getElementById("tab-btn-raw");
     const tabBtnHarvester = document.getElementById("tab-btn-harvester");
     const tabBadgeScans = document.getElementById("tab-badge-scans");
     const tabBadgeRaw = document.getElementById("tab-badge-raw");
+    const viewMultiweb = document.getElementById("view-multiweb");
     const viewScans = document.getElementById("view-scans");
     const viewRaw = document.getElementById("view-raw");
     const viewHarvester = document.getElementById("view-harvester");
+    const btnMultiwebRefresh = document.getElementById("btn-multiweb-refresh");
 
     // Raw Listings Elements
     const rawTableBody = document.getElementById("raw-table-body");
@@ -154,8 +157,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (tabBadgeScans) tabBadgeScans.textContent = rawScans.length;
                 applyFilters();
             }
-            // Precargar conteo de raw listings
+            // Precargar conteo de raw listings y monitor multiweb
             loadRawListings();
+            loadPlatformStats();
         } catch (err) {
             console.error("Error al cargar datos de admin:", err);
         }
@@ -453,35 +457,181 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
+    // ==========================================
     // 7. GESTIÓN DE PESTAÑAS (TABS)
     // ==========================================
     function switchTab(tabId) {
-        if (!tabBtnScans || !tabBtnRaw || !tabBtnHarvester) return;
+        if (tabBtnMultiweb) tabBtnMultiweb.classList.remove("active");
+        if (tabBtnScans) tabBtnScans.classList.remove("active");
+        if (tabBtnRaw) tabBtnRaw.classList.remove("active");
+        if (tabBtnHarvester) tabBtnHarvester.classList.remove("active");
 
-        tabBtnScans.classList.remove("active");
-        tabBtnRaw.classList.remove("active");
-        tabBtnHarvester.classList.remove("active");
+        if (viewMultiweb) viewMultiweb.classList.add("hidden");
+        if (viewScans) viewScans.classList.add("hidden");
+        if (viewRaw) viewRaw.classList.add("hidden");
+        if (viewHarvester) viewHarvester.classList.add("hidden");
 
-        viewScans.classList.add("hidden");
-        viewRaw.classList.add("hidden");
-        viewHarvester.classList.add("hidden");
-
-        if (tabId === "scans") {
-            tabBtnScans.classList.add("active");
-            viewScans.classList.remove("hidden");
+        if (tabId === "multiweb") {
+            if (tabBtnMultiweb) tabBtnMultiweb.classList.add("active");
+            if (viewMultiweb) viewMultiweb.classList.remove("hidden");
+            loadPlatformStats();
+        } else if (tabId === "scans") {
+            if (tabBtnScans) tabBtnScans.classList.add("active");
+            if (viewScans) viewScans.classList.remove("hidden");
         } else if (tabId === "raw") {
-            tabBtnRaw.classList.add("active");
-            viewRaw.classList.remove("hidden");
+            if (tabBtnRaw) tabBtnRaw.classList.add("active");
+            if (viewRaw) viewRaw.classList.remove("hidden");
             loadRawListings();
         } else if (tabId === "harvester") {
-            tabBtnHarvester.classList.add("active");
-            viewHarvester.classList.remove("hidden");
+            if (tabBtnHarvester) tabBtnHarvester.classList.add("active");
+            if (viewHarvester) viewHarvester.classList.remove("hidden");
         }
     }
 
+    if (tabBtnMultiweb) tabBtnMultiweb.addEventListener("click", () => switchTab("multiweb"));
     if (tabBtnScans) tabBtnScans.addEventListener("click", () => switchTab("scans"));
     if (tabBtnRaw) tabBtnRaw.addEventListener("click", () => switchTab("raw"));
     if (tabBtnHarvester) tabBtnHarvester.addEventListener("click", () => switchTab("harvester"));
+
+    // ==========================================
+    // 7.1 MONITOR MULTI-WEB (DASHBOARD COMPARATIVO)
+    // ==========================================
+    async function loadPlatformStats() {
+        const token = sessionStorage.getItem("admin_token");
+        if (!token) return;
+
+        try {
+            const res = await fetch("/api/admin/platform-stats", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const platforms = data.platforms || {};
+            const totalDb = data.total_database_items || 0;
+            const totalScans = data.total_scans || 0;
+            const totalRaw = data.total_raw || 0;
+
+            const totalCounter = document.getElementById("multiweb-total-counter");
+            if (totalCounter) {
+                totalCounter.textContent = `${totalDb} registros totales (${totalScans} escaneos + ${totalRaw} catálogo)`;
+            }
+
+            const pKeys = ["wallapop", "vinted", "milanuncios"];
+            pKeys.forEach(p => {
+                const pData = platforms[p] || {};
+                const sharePct = pData.share_pct || 0;
+                const totalItems = pData.total_items || 0;
+
+                // Barra de progreso
+                const bar = document.getElementById(`share-bar-${p}`);
+                if (bar) bar.style.width = `${Math.max(sharePct, 2)}%`;
+
+                // Etiqueta leyenda
+                const lbl = document.getElementById(`share-lbl-${p}`);
+                if (lbl) lbl.textContent = `${sharePct}% (${totalItems})`;
+
+                // Métricas de tarjetas
+                const elTotal = document.getElementById(`mw-total-${p}`);
+                if (elTotal) elTotal.textContent = totalItems;
+
+                const elMedian = document.getElementById(`mw-median-${p}`);
+                if (elMedian) elMedian.textContent = `${pData.median_price || 0} €`;
+
+                const elChollos = document.getElementById(`mw-chollos-${p}`);
+                if (elChollos) elChollos.textContent = pData.chollos_count || 0;
+
+                const elRisks = document.getElementById(`mw-risks-${p}`);
+                if (elRisks) elRisks.textContent = pData.risks_count || 0;
+
+                const elScans = document.getElementById(`mw-scans-${p}`);
+                if (elScans) elScans.textContent = pData.scans_count || 0;
+
+                const elRaw = document.getElementById(`mw-raw-${p}`);
+                if (elRaw) elRaw.textContent = pData.raw_count || 0;
+
+                // Celdas de tabla comparativa
+                const tdTotal = document.getElementById(`td-total-${p}`);
+                if (tdTotal) tdTotal.textContent = totalItems;
+
+                const tdShare = document.getElementById(`td-share-${p}`);
+                if (tdShare) tdShare.textContent = `${sharePct}%`;
+
+                const tdMedian = document.getElementById(`td-median-${p}`);
+                if (tdMedian) tdMedian.textContent = `${pData.median_price || 0} €`;
+
+                const tdChollos = document.getElementById(`td-chollos-${p}`);
+                if (tdChollos) tdChollos.textContent = pData.chollos_count || 0;
+
+                const tdRisks = document.getElementById(`td-risks-${p}`);
+                if (tdRisks) tdRisks.textContent = pData.risks_count || 0;
+            });
+        } catch (err) {
+            console.error("Error al cargar estadísticas multiweb:", err);
+        }
+    }
+
+    if (btnMultiwebRefresh) {
+        btnMultiwebRefresh.addEventListener("click", () => {
+            btnMultiwebRefresh.textContent = "⏳ Actualizando...";
+            loadPlatformStats().finally(() => {
+                setTimeout(() => {
+                    btnMultiwebRefresh.textContent = "🔄 Actualizar Métricas";
+                }, 400);
+            });
+        });
+    }
+
+    // Botones de acción rápida desde las tarjetas de web
+    const btnQuickHarvestMilanuncios = document.getElementById("btn-quick-harvest-milanuncios");
+    if (btnQuickHarvestMilanuncios) {
+        btnQuickHarvestMilanuncios.addEventListener("click", () => {
+            switchTab("harvester");
+            if (harvesterPlatform) harvesterPlatform.value = "milanuncios";
+            if (harvesterKeyword) harvesterKeyword.focus();
+        });
+    }
+
+    const btnQuickRawMilanuncios = document.getElementById("btn-quick-raw-milanuncios");
+    if (btnQuickRawMilanuncios) {
+        btnQuickRawMilanuncios.addEventListener("click", () => {
+            switchTab("raw");
+            if (rawFilterPlatform) {
+                rawFilterPlatform.value = "milanuncios";
+                loadRawListings();
+            }
+        });
+    }
+
+    const btnQuickHarvestVinted = document.getElementById("btn-quick-harvest-vinted");
+    if (btnQuickHarvestVinted) {
+        btnQuickHarvestVinted.addEventListener("click", () => {
+            switchTab("harvester");
+            if (harvesterPlatform) harvesterPlatform.value = "vinted";
+            if (harvesterKeyword) harvesterKeyword.focus();
+        });
+    }
+
+    const btnQuickRawVinted = document.getElementById("btn-quick-raw-vinted");
+    if (btnQuickRawVinted) {
+        btnQuickRawVinted.addEventListener("click", () => {
+            switchTab("raw");
+            if (rawFilterPlatform) {
+                rawFilterPlatform.value = "vinted";
+                loadRawListings();
+            }
+        });
+    }
+
+    const btnQuickScansWallapop = document.getElementById("btn-quick-scans-wallapop");
+    if (btnQuickScansWallapop) {
+        btnQuickScansWallapop.addEventListener("click", () => {
+            switchTab("scans");
+            if (filterPlatform) {
+                filterPlatform.value = "wallapop";
+                applyFilters();
+            }
+        });
+    }
 
     // ==========================================
     // 8. EXPLORADOR DE BBDD DE MERCADO (RAW LISTINGS)

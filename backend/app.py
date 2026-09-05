@@ -17,7 +17,7 @@ from config import (
 from database import (
     init_db, save_scan, get_recent_scans, get_all_scans_admin, get_admin_stats,
     get_cached_scan, delete_scan, get_all_benchmarks, add_or_update_benchmark,
-    get_raw_listings, delete_raw_listing, get_market_intelligence_stats
+    get_raw_listings, delete_raw_listing, get_market_intelligence_stats, get_platform_stats
 )
 from extractor import UniversalExtractor
 from scorer import DealScorer
@@ -210,6 +210,12 @@ async def admin_data(limit: int = 200, authorization: Optional[str] = Header(Non
 async def admin_stats(authorization: Optional[str] = Header(None)):
     verify_token(authorization)
     return get_admin_stats()
+
+@app.get("/api/admin/platform-stats")
+async def admin_platform_stats(authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    return get_platform_stats()
+
 
 @app.delete("/api/admin/scan/{scan_id}")
 async def admin_delete_scan(scan_id: int, authorization: Optional[str] = Header(None)):

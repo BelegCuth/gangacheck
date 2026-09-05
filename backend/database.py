@@ -700,6 +700,68 @@ def get_admin_stats() -> Dict[str, Any]:
         "average_score": 0.0
     }
 
+def get_platform_stats() -> Dict[str, Any]:
+    """Calcula métricas agregadas por cada web (Wallapop, Vinted, Milanuncios) desde Supabase o SQLite."""
+    platforms = ["wallapop", "vinted", "milanuncios"]
+    scans = get_all_scans_admin(limit=1000)
+    raw = get_raw_listings(limit=1000)
+
+    stats = {}
+    total_all_items = 0
+
+    for p in platforms:
+        p_scans = [s for s in scans if (s.get("platform") or "").lower() == p]
+        p_raw = [r for r in raw if (r.get("platform") or "").lower() == p]
+
+        scans_count = len(p_scans)
+        raw_count = len(p_raw)
+        total_p = scans_count + raw_count
+        total_all_items += total_p
+
+        all_prices = (
+            [float(s.get("price", 0)) for s in p_scans if float(s.get("price", 0)) > 0] +
+            [float(r.get("price", 0)) for r in p_raw if float(r.get("price", 0)) > 0]
+        )
+
+        avg_price = round(sum(all_prices) / len(all_prices), 2) if all_prices else 0.0
+        sorted_prices = sorted(all_prices)
+        median_price = round(sorted_prices[len(sorted_prices) // 2], 2) if sorted_prices else 0.0
+
+        chollos = sum(1 for s in p_scans if float(s.get("score", 0)) >= 7.5)
+        risks = sum(1 for s in p_scans if s.get("risk_level") == "ALTO" or "Estafa" in str(s.get("verdict", "")))
+
+        connector_status = "online"
+        connector_label = "Conectado en vivo"
+        if p == "wallapop":
+            connector_status = "emulated"
+            connector_label = "Emulación Browser / WAF"
+
+        stats[p] = {
+            "platform": p,
+            "display_name": "Milanuncios" if p == "milanuncios" else p.capitalize(),
+            "scans_count": scans_count,
+            "raw_count": raw_count,
+            "total_items": total_p,
+            "median_price": median_price,
+            "avg_price": avg_price,
+            "chollos_count": chollos,
+            "risks_count": risks,
+            "connector_status": connector_status,
+            "connector_label": connector_label,
+            "share_pct": 0.0
+        }
+
+    if total_all_items > 0:
+        for p in platforms:
+            stats[p]["share_pct"] = round((stats[p]["total_items"] / total_all_items) * 100, 1)
+
+    return {
+        "platforms": stats,
+        "total_database_items": total_all_items,
+        "total_scans": len(scans),
+        "total_raw": len(raw)
+    }
+
 
 def get_cached_scan(url: str, max_age_hours: int = 24) -> Optional[Dict[str, Any]]:
     """Busca si la URL ya fue analizada recientemente para servir el resultado desde caché."""
