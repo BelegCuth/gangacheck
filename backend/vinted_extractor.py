@@ -98,7 +98,15 @@ class VintedExtractor:
                         ld = json.loads(ld_str)
                         if ld.get("@type") == "Product":
                             offers = ld.get("offers", {})
-                            price = float(offers.get("price", 0.0))
+                            if isinstance(offers, list) and len(offers) > 0:
+                                offers = offers[0]
+                            elif not isinstance(offers, dict):
+                                offers = {}
+                            raw_price = offers.get("price", 0.0)
+                            try:
+                                price = float(str(raw_price).replace(",", "."))
+                            except (ValueError, TypeError):
+                                price = 0.0
                             return {
                                 "platform": "vinted",
                                 "item_id": item_id or "v_item",

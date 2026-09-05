@@ -127,7 +127,15 @@ class WallapopExtractor:
     @classmethod
     def _parse_json_ld(cls, ld: Dict[str, Any], url: str, item_id: Optional[str]) -> Dict[str, Any]:
         offers = ld.get("offers", {})
-        price = float(offers.get("price", 0.0))
+        if isinstance(offers, list) and len(offers) > 0:
+            offers = offers[0]
+        elif not isinstance(offers, dict):
+            offers = {}
+        raw_price = offers.get("price", 0.0)
+        try:
+            price = float(str(raw_price).replace(",", "."))
+        except (ValueError, TypeError):
+            price = 0.0
         return {
             "platform": "wallapop",
             "item_id": item_id or "ld_item",
