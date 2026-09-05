@@ -8,8 +8,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const demoChips = document.querySelectorAll(".demo-chip");
     const recentScansGrid = document.getElementById("recent-scans-grid");
     const btnShareResult = document.getElementById("btn-share-result");
+    const btnRefreshResult = document.getElementById("btn-refresh-result");
     const toast = document.getElementById("toast");
     const historyChips = document.querySelectorAll(".history-chip");
+
+    // Formateador limpio de moneda Euro
+    function formatEuro(val) {
+        if (val === undefined || val === null || isNaN(val)) return "0 €";
+        const num = Number(val);
+        if (Number.isInteger(num) || num % 1 === 0) {
+            return `${Math.round(num).toLocaleString("es-ES")} €`;
+        }
+        return `${num.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+    }
 
     // Tacómetro SVG Elements
     const gaugeArc = document.getElementById("gauge-arc");
@@ -98,18 +109,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Función principal de escaneo
-    async function runScan(url) {
+    async function runScan(url, forceRefresh = false) {
         hideError();
         loadingCard.classList.remove("hidden");
         resultSection.classList.add("hidden");
         submitBtn.disabled = true;
-        submitBtn.querySelector(".btn-text").textContent = "Escaneando...";
+        submitBtn.querySelector(".btn-text").textContent = forceRefresh ? "Actualizando..." : "Escaneando...";
 
         try {
             const response = await fetch("/api/analyze", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: url })
+                body: JSON.stringify({ url: url, force_refresh: forceRefresh })
             });
 
             const data = await response.json();
@@ -176,17 +187,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // Precios
-        document.getElementById("res-item-price").textContent = `${ev.item_price.toFixed(0)} €`;
-        document.getElementById("res-market-price").textContent = `${ev.market_price.toFixed(0)} €`;
+        // Precios con formato limpio
+        document.getElementById("res-item-price").textContent = formatEuro(ev.item_price);
+        document.getElementById("res-market-price").textContent = formatEuro(ev.market_price);
 
         const savingsEl = document.getElementById("res-savings");
         if (ev.savings > 0) {
-            savingsEl.textContent = `Ahorras ${ev.savings.toFixed(0)} € (-${Math.round(ev.savings_pct)}%)`;
+            savingsEl.textContent = `Ahorras ${formatEuro(ev.savings)} (-${Math.round(ev.savings_pct)}%)`;
             savingsEl.className = "metric-value price-savings";
             savingsEl.style.color = "";
         } else {
-            savingsEl.textContent = `+${Math.abs(ev.savings).toFixed(0)} € (+${Math.abs(Math.round(ev.savings_pct))}%)`;
+            savingsEl.textContent = `+${formatEuro(Math.abs(ev.savings))} (+${Math.abs(Math.round(ev.savings_pct))}%)`;
             savingsEl.className = "metric-value";
             savingsEl.style.color = "#EF4444";
         }
@@ -274,6 +285,22 @@ document.addEventListener("DOMContentLoaded", () => {
         // Scroll suave al resultado
         resultSection.classList.remove("hidden");
         resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // Botón Actualizar / Re-analizar en vivo
+    if (btnRefreshResult) {
+        btnRefreshResult.addEventListener("click", async () => {
+            if (!currentScan || !currentScan.item || !currentScan.item.url) return;
+            btnRefreshResult.classList.add("spinning");
+            btnRefreshResult.disabled = true;
+            try {
+                await runScan(currentScan.item.url, true);
+                showToast("¡Análisis actualizado en vivo!");
+            } finally {
+                btnRefreshResult.classList.remove("spinning");
+                btnRefreshResult.disabled = false;
+            }
+        });
     }
 
     // Botón Compartir / Copiar Análisis

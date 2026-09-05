@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
-    <link rel="stylesheet" href="/static/styles.css?v=2.1">
+    <link rel="stylesheet" href="/static/styles.css?v=2.2">
 </head>
 <body>
     <div class="glow-bg"></div>
@@ -141,10 +141,16 @@
                             </div>
                         </div>
                     </div>
-                    <button id="btn-share-result" class="btn-share" title="Compartir o copiar resultado" aria-label="Compartir resultado">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                        Compartir / Copiar
-                    </button>
+                    <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button id="btn-refresh-result" class="btn-share btn-refresh" title="Forzar reanálisis en vivo descartando caché" aria-label="Reanalizar anuncio">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            <span>Actualizar</span>
+                        </button>
+                        <button id="btn-share-result" class="btn-share" title="Compartir o copiar resultado" aria-label="Compartir resultado">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                            <span>Compartir</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Main Analysis Row -->
@@ -178,28 +184,28 @@
                             <div class="subscore-item">
                                 <div class="subscore-header">
                                     <span>💰 Descuento vs Mercado</span>
-                                    <span id="sub-price-val" class="subscore-val">0.0</span>
+                                    <span id="sub-price-val" class="subscore-val">— / 10</span>
                                 </div>
                                 <div class="subscore-bar-bg">
-                                    <div id="sub-price-bar" class="subscore-bar-fill" style="background: #10B981;"></div>
+                                    <div id="sub-price-bar" class="subscore-bar-fill" style="background: #10B981; width: 0%;"></div>
                                 </div>
                             </div>
                             <div class="subscore-item">
                                 <div class="subscore-header">
                                     <span>🛡️ Fiabilidad Vendedor</span>
-                                    <span id="sub-seller-val" class="subscore-val">0.0</span>
+                                    <span id="sub-seller-val" class="subscore-val">— / 10</span>
                                 </div>
                                 <div class="subscore-bar-bg">
-                                    <div id="sub-seller-bar" class="subscore-bar-fill" style="background: #06B6D4;"></div>
+                                    <div id="sub-seller-bar" class="subscore-bar-fill" style="background: #06B6D4; width: 0%;"></div>
                                 </div>
                             </div>
                             <div class="subscore-item">
                                 <div class="subscore-header">
                                     <span>📦 Estado y Accesorios</span>
-                                    <span id="sub-cond-val" class="subscore-val">0.0</span>
+                                    <span id="sub-cond-val" class="subscore-val">— / 10</span>
                                 </div>
                                 <div class="subscore-bar-bg">
-                                    <div id="sub-cond-bar" class="subscore-bar-fill" style="background: #F59E0B;"></div>
+                                    <div id="sub-cond-bar" class="subscore-bar-fill" style="background: #F59E0B; width: 0%;"></div>
                                 </div>
                             </div>
                         </div>
@@ -283,6 +289,6 @@
         </div>
     </footer>
 
-    <script src="/static/app.js?v=2.1"></script>
+    <script src="/static/app.js?v=2.2"></script>
 </body>
 </html>

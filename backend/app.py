@@ -49,6 +49,7 @@ app.add_middleware(
 
 class AnalyzeRequest(BaseModel):
     url: str
+    force_refresh: bool = False
 
 class AdminLoginRequest(BaseModel):
     username: str
@@ -90,8 +91,8 @@ async def analyze_url(req: AnalyzeRequest):
             detail="URL no compatible. Por favor introduce un enlace válido de Wallapop, Vinted o Milanuncios."
         )
 
-    # 2. Comprobar si ya existe en caché reciente (< 24h)
-    cached = get_cached_scan(url)
+    # 2. Comprobar si ya existe en caché reciente (< 24h) salvo si se fuerza refresco
+    cached = None if req.force_refresh else get_cached_scan(url)
     if cached and "test-" not in url.lower():
         details = cached.get("details", {})
         evaluation = details.get("evaluation") or {

@@ -48,6 +48,10 @@ DEFAULT_BENCHMARKS = [
     ("iphone_15_128", "Apple iPhone 15 128GB", 580.0, 510.0, 650.0, "Móviles"),
     ("iphone_15_pro", "Apple iPhone 15 Pro 128GB", 740.0, 670.0, 820.0, "Móviles"),
     ("iphone_15_promax", "Apple iPhone 15 Pro Max 256GB", 860.0, 780.0, 950.0, "Móviles"),
+    ("iphone_16_128", "Apple iPhone 16 128GB", 790.0, 720.0, 860.0, "Móviles"),
+    ("iphone_16_pro", "Apple iPhone 16 Pro 128GB", 990.0, 910.0, 1080.0, "Móviles"),
+    ("iphone_16_promax", "Apple iPhone 16 Pro Max 256GB", 1190.0, 1090.0, 1290.0, "Móviles"),
+    ("iphone_se_3", "Apple iPhone SE (2022 / 3ª Gen)", 220.0, 180.0, 260.0, "Móviles"),
     ("samsung_s23", "Samsung Galaxy S23 128GB", 390.0, 330.0, 450.0, "Móviles"),
     ("samsung_s24", "Samsung Galaxy S24 256GB", 520.0, 450.0, 590.0, "Móviles"),
     ("samsung_s24_ultra", "Samsung Galaxy S24 Ultra 256GB", 790.0, 700.0, 890.0, "Móviles"),
@@ -499,7 +503,10 @@ def find_closest_benchmark(title: str) -> Optional[Dict[str, Any]]:
 
     # iPhones
     if "iphone" in title_lower:
-        for gen in ["15", "14", "13", "12", "11"]:
+        if " se" in title_lower or "iphone se" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "iphone_se_3"), None)
+            if match: return match
+        for gen in ["16", "15", "14", "13", "12", "11"]:
             if gen in title_lower:
                 if "pro max" in title_lower or "promax" in title_lower:
                     match = next((r for r in rows if f"{gen}_promax" in r["product_key"] or f"{gen}_pro_max" in r["product_key"]), None)
@@ -699,7 +706,7 @@ def get_cached_scan(url: str, max_age_hours: int = 24) -> Optional[Dict[str, Any
     if not url:
         return None
     clean_url = url.strip()
-    
+
     if supabase_client:
         try:
             res = supabase_client.table("scans").select("*").eq("url", clean_url).order("id", desc=True).limit(1).execute()
@@ -711,13 +718,20 @@ def get_cached_scan(url: str, max_age_hours: int = 24) -> Optional[Dict[str, Any
                         row["details"] = json.loads(details)
                     except Exception:
                         row["details"] = {}
-                return row
+                # No servir como caché si fue un fallback por bloqueo anti-bot
+                source = (row.get("details") or {}).get("source", "")
+                if "smart_parser" not in source and "slug_fallback" not in source:
+                    return row
         except Exception as e:
             print(f"[Supabase Cache] Error: {e}")
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM scans WHERE url = ? ORDER BY id DESC LIMIT 1", (clean_url,))
+    # Filtrar por antigüedad máxima de max_age_hours
+    cursor.execute(
+        "SELECT * FROM scans WHERE url = ? AND created_at >= datetime('now', ?) ORDER BY id DESC LIMIT 1",
+        (clean_url, f"-{max_age_hours} hours")
+    )
     row = cursor.fetchone()
     conn.close()
     if row:
@@ -727,7 +741,10 @@ def get_cached_scan(url: str, max_age_hours: int = 24) -> Optional[Dict[str, Any
                 d["details"] = json.loads(d["details_json"])
             except Exception:
                 d["details"] = {}
-        return d
+        # Ignorar fallbacks en caché
+        source = (d.get("details") or {}).get("source", "")
+        if "smart_parser" not in source and "slug_fallback" not in source:
+            return d
     return None
 
 def delete_scan(scan_id: int) -> bool:
