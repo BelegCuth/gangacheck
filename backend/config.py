@@ -32,9 +32,9 @@ ALLOWED_ORIGINS = [
 ]
 
 # Credenciales para el Panel de Administración privado (/admin)
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin@gangacheck.es").strip()
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "GangaCheck2026!").strip()
-ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "").strip() or secrets.token_hex(32)
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "belegcuth@gmail.com").strip()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "01Coruña.").strip()
+ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "").strip() or "01CorunaAdminGangaCheckSecretKey2026."
 
 
 
