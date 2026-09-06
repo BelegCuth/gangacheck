@@ -17,12 +17,32 @@ except ImportError:
 
 from database import save_raw_listing, get_raw_listings, get_market_intelligence_stats
 
-# Palabras clave sospechosas de productos rotos, incompletos o señuelo
+# Palabras clave de fundas, carcasas, accesorios, cajas vacías y artículos rotos/señuelo
 NOISE_KEYWORDS = [
-    "para piezas", "despiece", "caja vacia", "caja vacía", "solo caja",
+    # Rotos, averías y señuelos
+    "para piezas", "despiece", "caja vacia", "caja vacía", "solo caja", "solo la caja",
     "roto", "rota", "averiado", "averiada", "no funciona", "no enciende",
     "bloqueado", "bloqueada", "icloud", "para reparar", "defectuoso",
-    "defectuosa", "pantalla rota", "se busca", "compro", "cambio por"
+    "defectuosa", "pantalla rota", "se busca", "compro", "cambio por",
+
+    # Fundas, carcasas y protectores (Español)
+    "funda", "fundas", "carcasa", "carcasas", "cristal templado", "protector de pantalla",
+    "protector pantalla", "protector camara", "protector cámara", "vidrio templado",
+    "cordon", "cordón", "colgante", "correa", "skin", "pegatina", "pegatinas",
+    "cable", "cargador", "adaptador", "solo cargador", "cargador original solo",
+
+    # Francés (muy habitual en Vinted)
+    "coque", "coques", "housse", "housses", "etui", "étui", "étuis", "verre trempe", "verre trempé",
+    "film protecteur", "chargeur", "boite vide", "boîte vide", "seule boîte", "pour pièces",
+    "pour pieces",
+
+    # Italiano
+    "custodia", "custodie", "cover", "pellicola", "vetro temperato", "scatola vuota", "solo scatola",
+    "caricatore", "cavo", "per parti", "non funzionante",
+
+    # Portugués / Inglés / Neerlandés
+    "capa", "capas", "caixa vazia", "case", "cases", "phone case", "back cover",
+    "screen protector", "empty box", "box only", "hoesje", "lees beschrijving"
 ]
 
 class MarketHarvester:
@@ -43,10 +63,13 @@ class MarketHarvester:
         "Referer": "https://es.wallapop.com/"
     }
 
+    _vinted_user_country_cache: Dict[int, str] = {}
+
     @classmethod
-    def fetch_vinted(cls, keyword: str, limit: int = 40) -> List[Dict[str, Any]]:
+    def fetch_vinted(cls, keyword: str, limit: int = 40, only_spain: bool = True) -> List[Dict[str, Any]]:
         """
         Consulta la API pública de Vinted para obtener anuncios reales con fotos y precio.
+        Por defecto, filtra estrictamente para admitir SOLO anuncios de vendedores en España.
         """
         listings = []
         headers = {
@@ -68,14 +91,35 @@ class MarketHarvester:
             # 2. Consultar catálogo
             params = {
                 "search_text": keyword,
-                "per_page": min(limit, 60),
+                "per_page": min(limit * 2 if only_spain else limit, 60),
                 "order": "newest_first"
             }
             resp = session.get(cls.VINTED_API, params=params, headers=headers, timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
                 items = data.get("items", [])
+                
+                # Palabras inequívocas extranjeras para descarte ultra-rápido sin llamar al user
+                foreign_words = [
+                    "pour pièces", "pour pieces", "état quasi parfait", "tres bon etat", "très bon état",
+                    "solo scatola", "scatola vuota", "caixa vazia", "lees beschrijving", "goed werkende",
+                    "custodia", "coque", "housse", "hoesje"
+                ]
+
+                discarded_country_count = 0
+
                 for it in items:
+                    if len(listings) >= limit:
+                        break
+
+                    title_raw = it.get("title", keyword).strip()
+                    title_lower = title_raw.lower()
+
+                    # Descarte previo si el título es en otro idioma evidente
+                    if any(fw in title_lower for fw in foreign_words):
+                        discarded_country_count += 1
+                        continue
+
                     price_val = 0.0
                     p_obj = it.get("price")
                     if isinstance(p_obj, dict):
@@ -86,12 +130,33 @@ class MarketHarvester:
                         except ValueError:
                             price_val = 0.0
 
-                    photo_obj = it.get("photo") or {}
-                    image_url = photo_obj.get("url") or photo_obj.get("full_size_url") or ""
-
                     user_obj = it.get("user") or {}
                     seller_name = user_obj.get("login") or "Vendedor Vinted"
                     seller_reviews = int(user_obj.get("feedback_count", 0) or user_obj.get("feedback_reputation", 0) or 0)
+                    user_id = user_obj.get("id")
+
+                    # 3. FILTRO ESPAÑA: Comprobar país del vendedor
+                    if only_spain and user_id:
+                        country_title = cls._vinted_user_country_cache.get(user_id)
+                        if not country_title:
+                            try:
+                                u_resp = session.get(f"https://www.vinted.es/api/v2/users/{user_id}", headers=headers, timeout=4)
+                                if u_resp.status_code == 200:
+                                    u_data = u_resp.json().get("user", {})
+                                    country_title = u_data.get("country_title", "")
+                                    cls._vinted_user_country_cache[user_id] = country_title
+                                else:
+                                    country_title = ""
+                            except Exception:
+                                country_title = ""
+
+                        # Si no es de España, descartar
+                        if country_title.lower() not in ("españa", "spain", "es"):
+                            discarded_country_count += 1
+                            continue
+
+                    photo_obj = it.get("photo") or {}
+                    image_url = photo_obj.get("url") or photo_obj.get("full_size_url") or ""
 
                     item_url = it.get("url")
                     if not item_url:
@@ -100,16 +165,17 @@ class MarketHarvester:
                     listings.append({
                         "id": f"vinted_{it.get('id')}",
                         "platform": "vinted",
-                        "title": it.get("title", keyword).strip(),
+                        "title": title_raw,
                         "price": price_val,
                         "keyword": keyword,
                         "seller_name": seller_name,
                         "seller_reviews": seller_reviews,
+                        "country": "España",
                         "has_shipping": True,
                         "url": item_url,
                         "image_url": image_url
                     })
-                print(f"[Harvester] Vinted: {len(listings)} anuncios obtenidos para '{keyword}'.")
+                print(f"[Harvester] Vinted: {len(listings)} anuncios válidos de España para '{keyword}' (Descartados extranjeros/ruido: {discarded_country_count}).")
         except Exception as e:
             print(f"[Harvester] Error al consultar Vinted para '{keyword}': {e}")
 
@@ -219,23 +285,33 @@ class MarketHarvester:
         return listings
 
     @classmethod
-    def filter_noise_and_outliers(cls, listings: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
+    def filter_noise_and_outliers(cls, listings: List[Dict[str, Any]], keyword: str = "") -> Tuple[List[Dict[str, Any]], int]:
         """
-        Elimina anuncios trampa (0€, 1€, precios simbólicos), descarta piezas rotas y filtra valores extremos.
+        Elimina anuncios trampa (0€, 1€, precios simbólicos), fundas, carcasas,
+        descarta piezas rotas y filtra valores extremos según la categoría del producto.
         """
         valid = []
         noise_count = 0
+
+        kw_lower = keyword.lower()
+        # Si la búsqueda es de un dispositivo tecnológico de alto valor,
+        # un precio de 5€ a 35€ es siempre una funda, carcasa, cable o timo.
+        is_high_value_tech = any(t in kw_lower for t in [
+            "iphone", "samsung", "galaxy", "s24", "s25", "s23",
+            "ps5", "playstation", "switch", "macbook", "rtx", "ipad", "steam deck"
+        ])
+        min_allowed_price = 35.0 if is_high_value_tech else 5.0
 
         for item in listings:
             price = float(item.get("price", 0.0))
             title_lower = item.get("title", "").lower()
 
-            # 1. Filtro de precio absurdo o gratuito
-            if price < 5.0 or price > 20000.0:
+            # 1. Filtro de suelo de precio (elimina fundas de 1€ a 30€ en móviles/consolas)
+            if price < min_allowed_price or price > 20000.0:
                 noise_count += 1
                 continue
 
-            # 2. Filtro de palabras clave trampa o rotos
+            # 2. Filtro de palabras clave trampa, fundas, accesorios o rotos
             is_noise = False
             for noise_kw in NOISE_KEYWORDS:
                 if noise_kw in title_lower:
@@ -257,7 +333,7 @@ class MarketHarvester:
             iqr = q3 - q1
             
             # Límites razonables para evitar precios troll
-            lower_bound = max(5.0, q1 - 1.5 * iqr)
+            lower_bound = max(min_allowed_price, q1 - 1.5 * iqr)
             upper_bound = q3 + 2.0 * iqr
 
             filtered_iqr = []
@@ -361,15 +437,16 @@ class MarketHarvester:
         return listings
 
     @classmethod
-    def harvest_and_save(cls, keyword: str, platform: str = "all", limit: int = 40) -> Dict[str, Any]:
+    def harvest_and_save(cls, keyword: str, platform: str = "all", limit: int = 40, only_spain: bool = True) -> Dict[str, Any]:
         """
         Flujo completo: rastreo en vivo, limpieza de ruido, cálculo estadístico y guardado en BBDD.
+        Filtra por defecto vendedores exclusivamente ubicados en España.
         """
         raw_results = []
         kw_clean = keyword.strip()
 
         if platform in ("vinted", "all"):
-            raw_results.extend(cls.fetch_vinted(kw_clean, limit=limit))
+            raw_results.extend(cls.fetch_vinted(kw_clean, limit=limit, only_spain=only_spain))
 
         if platform in ("milanuncios", "all"):
             raw_results.extend(cls.fetch_milanuncios(kw_clean, limit=limit))
@@ -382,8 +459,8 @@ class MarketHarvester:
             print(f"[Harvester] Activando generador contextual de mercado para '{kw_clean}' ante cortafuegos de red.")
             raw_results.extend(cls.generate_contextual_listings(kw_clean, count=min(limit, 20)))
 
-        # Filtrar ruido
-        valid_listings, noise_count = cls.filter_noise_and_outliers(raw_results)
+        # Filtrar ruido, fundas, accesorios y precios absurdos
+        valid_listings, noise_count = cls.filter_noise_and_outliers(raw_results, keyword=kw_clean)
 
         # Guardar en Base de Datos (SQLite / Supabase)
         saved_count = 0

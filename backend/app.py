@@ -77,6 +77,7 @@ class HarvestRequest(BaseModel):
     keyword: str
     platform: str = "all"
     limit: int = 40
+    only_spain: bool = True
 
 class BenchmarkFromHarvestRequest(BaseModel):
     product_key: str
@@ -287,7 +288,7 @@ async def admin_harvest(req: HarvestRequest, authorization: Optional[str] = Head
     kw = req.keyword.strip()
     if not kw:
         raise HTTPException(status_code=400, detail="Debes proporcionar un término de búsqueda.")
-    result = MarketHarvester.harvest_and_save(kw, platform=req.platform, limit=req.limit)
+    result = MarketHarvester.harvest_and_save(kw, platform=req.platform, limit=req.limit, only_spain=req.only_spain)
     return result
 
 @app.post("/api/admin/save-benchmark-from-harvest")
