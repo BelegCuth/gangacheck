@@ -36,5 +36,18 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "belegcuth@gmail.com").strip()
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "01Coruña.").strip()
 ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "").strip() or "01CorunaAdminGangaCheckSecretKey2026."
 
+# Telegram Bot para Alertas de Chollos
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
-
+# Scanner automático de chollos
+AUTO_SCAN_ENABLED = os.getenv("AUTO_SCAN_ENABLED", "false").lower() == "true"
+AUTO_SCAN_INTERVAL_MINUTES = int(os.getenv("AUTO_SCAN_INTERVAL_MINUTES", "20"))
+AUTO_SCAN_MIN_SCORE = float(os.getenv("AUTO_SCAN_MIN_SCORE", "8.0"))
+AUTO_SCAN_MIN_SAVINGS = float(os.getenv("AUTO_SCAN_MIN_SAVINGS", "40"))
+AUTO_SCAN_KEYWORDS = [
+    kw.strip() for kw in os.getenv(
+        "AUTO_SCAN_KEYWORDS",
+        "PlayStation 5,iPhone 13 128GB,iPhone 14 128GB,Samsung Galaxy S25,Samsung Galaxy S24,Nintendo Switch OLED,RTX 4070,MacBook Air M1,Steam Deck"
+    ).split(",") if kw.strip()
+]

@@ -55,6 +55,9 @@ DEFAULT_BENCHMARKS = [
     ("samsung_s23", "Samsung Galaxy S23 128GB", 390.0, 330.0, 450.0, "Móviles"),
     ("samsung_s24", "Samsung Galaxy S24 256GB", 520.0, 450.0, 590.0, "Móviles"),
     ("samsung_s24_ultra", "Samsung Galaxy S24 Ultra 256GB", 790.0, 700.0, 890.0, "Móviles"),
+    ("samsung_s25", "Samsung Galaxy S25 256GB", 690.0, 610.0, 780.0, "Móviles"),
+    ("samsung_s25_plus", "Samsung Galaxy S25+ 256GB", 820.0, 730.0, 920.0, "Móviles"),
+    ("samsung_s25_ultra", "Samsung Galaxy S25 Ultra 256GB", 1050.0, 950.0, 1200.0, "Móviles"),
     ("ipad_air_m1", "Apple iPad Air M1 (5ª Gen)", 420.0, 360.0, 480.0, "Tablets"),
     ("ipad_pro_11_m2", "Apple iPad Pro 11 M2", 640.0, 560.0, 720.0, "Tablets"),
 
@@ -523,6 +526,15 @@ def find_closest_benchmark(title: str) -> Optional[Dict[str, Any]]:
                     if match: return match
 
     # Samsung
+    if "s25" in title_lower or "galaxy s25" in title_lower:
+        if "ultra" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "samsung_s25_ultra"), None)
+            if match: return match
+        if "plus" in title_lower or "s25+" in title_lower or "s25 +" in title_lower:
+            match = next((r for r in rows if r["product_key"] == "samsung_s25_plus"), None)
+            if match: return match
+        match = next((r for r in rows if r["product_key"] == "samsung_s25"), None)
+        if match: return match
     if "s24" in title_lower or "galaxy s24" in title_lower:
         if "ultra" in title_lower:
             match = next((r for r in rows if r["product_key"] == "samsung_s24_ultra"), None)

@@ -1,8 +1,9 @@
 import os
 import secrets
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from contextlib import asynccontextmanager
+import threading
 
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +13,8 @@ from pydantic import BaseModel, HttpUrl
 
 from config import (
     HOST, PORT, BASE_DIR, ALLOWED_ORIGINS,
-    ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY
+    ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY,
+    AUTO_SCAN_ENABLED, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 )
 from database import (
     init_db, save_scan, get_recent_scans, get_all_scans_admin, get_admin_stats,
@@ -22,14 +24,22 @@ from database import (
 from extractor import UniversalExtractor
 from scorer import DealScorer
 from harvester import MarketHarvester
+from auto_scanner import scanner_instance
+from notifier import send_test_message, send_telegram, is_telegram_configured
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Inicialización en arranque
     init_db()
     print("[GangaCheck] Base de datos e índices inicializados correctamente.")
+    if AUTO_SCAN_ENABLED:
+        print("[GangaCheck] AUTO_SCAN_ENABLED activado. Arrancando scanner de chollos en segundo plano...")
+        scanner_instance.start()
     yield
-    # Limpieza en apagado si fuera necesario
+    # Limpieza en apagado
+    if scanner_instance.is_running:
+        print("[GangaCheck] Deteniendo scanner de chollos...")
+        scanner_instance.stop()
 
 app = FastAPI(
     title="GangaCheck API",
@@ -75,6 +85,15 @@ class BenchmarkFromHarvestRequest(BaseModel):
     min_normal_price: float
     max_normal_price: float
     category: str = "General"
+
+class ScannerConfigRequest(BaseModel):
+    keywords: Optional[List[str]] = None
+    min_score: Optional[float] = None
+    min_savings: Optional[float] = None
+    interval_minutes: Optional[int] = None
+
+class TestTelegramRequest(BaseModel):
+    custom_message: Optional[str] = None
 
 # --- ENDPOINT PÚBLICO PRINCIPAL: ANÁLISIS DE ANUNCIO ---
 
@@ -279,6 +298,60 @@ async def admin_save_benchmark_from_harvest(req: BenchmarkFromHarvestRequest, au
         req.min_normal_price, req.max_normal_price, req.category
     )
     return {"success": ok}
+
+# --- SCANNER AUTOMÁTICO Y ALERTAS EN TIEMPO REAL (TELEGRAM) ---
+
+@app.get("/api/admin/scanner/status")
+async def admin_scanner_status(authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    return scanner_instance.get_status()
+
+@app.post("/api/admin/scanner/config")
+async def admin_scanner_config(req: ScannerConfigRequest, authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    updated = scanner_instance.update_config(
+        keywords=req.keywords,
+        min_score=req.min_score,
+        min_savings=req.min_savings,
+        interval_minutes=req.interval_minutes
+    )
+    return {"success": True, "status": updated}
+
+@app.post("/api/admin/scanner/start")
+async def admin_scanner_start(authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    scanner_instance.start()
+    return {"success": True, "status": scanner_instance.get_status()}
+
+@app.post("/api/admin/scanner/stop")
+async def admin_scanner_stop(authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    scanner_instance.stop()
+    return {"success": True, "status": scanner_instance.get_status()}
+
+@app.post("/api/admin/scanner/run-once")
+async def admin_scanner_run_once(authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    # Ejecutar en segundo plano para responder de inmediato al cliente HTTP
+    threading.Thread(target=scanner_instance.run_once, daemon=True).start()
+    return {"success": True, "message": "Ciclo de escaneo iniciado en segundo plano. Si se detectan chollos se enviarán alertas por Telegram."}
+
+@app.post("/api/admin/scanner/test-telegram")
+async def admin_test_telegram(req: Optional[TestTelegramRequest] = None, authorization: Optional[str] = Header(None)):
+    verify_token(authorization)
+    if not is_telegram_configured():
+        raise HTTPException(
+            status_code=400,
+            detail="Telegram no está configurado. Añade TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en tus variables de entorno (.env o Render)."
+        )
+    if req and req.custom_message:
+        sent = send_telegram(req.custom_message)
+    else:
+        sent = send_test_message()
+    
+    if not sent:
+        raise HTTPException(status_code=500, detail="Error al enviar mensaje a Telegram. Verifica que el bot tenga permisos y el Chat ID sea correcto.")
+    return {"success": True, "message": "✅ Mensaje de prueba enviado exitosamente a tu Telegram."}
 
 # --- SERVIR ARCHIVOS ESTÁTICOS Y PÁGINAS DEL FRONTEND ---
 def get_frontend_file(filename: str) -> Path:

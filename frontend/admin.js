@@ -36,13 +36,40 @@ document.addEventListener("DOMContentLoaded", () => {
     const tabBtnScans = document.getElementById("tab-btn-scans");
     const tabBtnRaw = document.getElementById("tab-btn-raw");
     const tabBtnHarvester = document.getElementById("tab-btn-harvester");
+    const tabBtnAlerts = document.getElementById("tab-btn-alerts");
     const tabBadgeScans = document.getElementById("tab-badge-scans");
     const tabBadgeRaw = document.getElementById("tab-badge-raw");
     const viewMultiweb = document.getElementById("view-multiweb");
     const viewScans = document.getElementById("view-scans");
     const viewRaw = document.getElementById("view-raw");
     const viewHarvester = document.getElementById("view-harvester");
+    const viewAlerts = document.getElementById("view-alerts");
     const btnMultiwebRefresh = document.getElementById("btn-multiweb-refresh");
+    const btnScannerRefresh = document.getElementById("btn-scanner-refresh");
+
+    // Scanner & Telegram Elements
+    const tgStatusBadge = document.getElementById("tg-status-badge");
+    const tgTokenLabel = document.getElementById("tg-token-label");
+    const tgChatLabel = document.getElementById("tg-chat-label");
+    const btnTestTelegram = document.getElementById("btn-test-telegram");
+    const tgTestFeedback = document.getElementById("tg-test-feedback");
+    const tgGuideBox = document.getElementById("tg-guide-box");
+    const scannerStatusBadge = document.getElementById("scanner-status-badge");
+    const scannerMetricCycles = document.getElementById("scanner-metric-cycles");
+    const scannerMetricDeals = document.getElementById("scanner-metric-deals");
+    const scannerLastScan = document.getElementById("scanner-last-scan");
+    const scannerNextScan = document.getElementById("scanner-next-scan");
+    const btnScannerToggle = document.getElementById("btn-scanner-toggle");
+    const btnScannerRunOnce = document.getElementById("btn-scanner-run-once");
+    const scannerActionFeedback = document.getElementById("scanner-action-feedback");
+    const scannerConfigForm = document.getElementById("scanner-config-form");
+    const cfgInterval = document.getElementById("cfg-interval");
+    const cfgMinScore = document.getElementById("cfg-min-score");
+    const cfgMinSavings = document.getElementById("cfg-min-savings");
+    const cfgKeywords = document.getElementById("cfg-keywords");
+    const cfgFeedback = document.getElementById("cfg-feedback");
+    const scannerHistoryBody = document.getElementById("scanner-history-body");
+    const scannerHistoryCount = document.getElementById("scanner-history-count");
 
     // Raw Listings Elements
     const rawTableBody = document.getElementById("raw-table-body");
@@ -465,11 +492,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (tabBtnScans) tabBtnScans.classList.remove("active");
         if (tabBtnRaw) tabBtnRaw.classList.remove("active");
         if (tabBtnHarvester) tabBtnHarvester.classList.remove("active");
+        if (tabBtnAlerts) tabBtnAlerts.classList.remove("active");
 
         if (viewMultiweb) viewMultiweb.classList.add("hidden");
         if (viewScans) viewScans.classList.add("hidden");
         if (viewRaw) viewRaw.classList.add("hidden");
         if (viewHarvester) viewHarvester.classList.add("hidden");
+        if (viewAlerts) viewAlerts.classList.add("hidden");
 
         if (tabId === "multiweb") {
             if (tabBtnMultiweb) tabBtnMultiweb.classList.add("active");
@@ -485,6 +514,10 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (tabId === "harvester") {
             if (tabBtnHarvester) tabBtnHarvester.classList.add("active");
             if (viewHarvester) viewHarvester.classList.remove("hidden");
+        } else if (tabId === "alerts") {
+            if (tabBtnAlerts) tabBtnAlerts.classList.add("active");
+            if (viewAlerts) viewAlerts.classList.remove("hidden");
+            loadScannerStatus();
         }
     }
 
@@ -492,6 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tabBtnScans) tabBtnScans.addEventListener("click", () => switchTab("scans"));
     if (tabBtnRaw) tabBtnRaw.addEventListener("click", () => switchTab("raw"));
     if (tabBtnHarvester) tabBtnHarvester.addEventListener("click", () => switchTab("harvester"));
+    if (tabBtnAlerts) tabBtnAlerts.addEventListener("click", () => switchTab("alerts"));
 
     // ==========================================
     // 7.1 MONITOR MULTI-WEB (DASHBOARD COMPARATIVO)
@@ -889,4 +923,327 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // ==========================================
+    // 7.4 ALERTAS EN TIEMPO REAL & AUTO-SCANNER
+    // ==========================================
+    async function loadScannerStatus() {
+        const token = sessionStorage.getItem("admin_token");
+        if (!token) return;
+
+        try {
+            const res = await fetch("/api/admin/scanner/status", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!res.ok) return;
+
+            const data = await res.json();
+
+            // 1. Estado Telegram
+            if (tgStatusBadge) {
+                if (data.telegram_configured) {
+                    tgStatusBadge.textContent = "🟢 Conectado";
+                    tgStatusBadge.className = "badge-status status-online";
+                    if (tgTokenLabel) tgTokenLabel.textContent = "•••• Configurado";
+                    if (tgChatLabel) tgChatLabel.textContent = "•••• Conectado";
+                    if (tgGuideBox) tgGuideBox.style.display = "none";
+                } else {
+                    tgStatusBadge.textContent = "🟡 Sin Configurar";
+                    tgStatusBadge.className = "badge-status status-emulated";
+                    if (tgTokenLabel) tgTokenLabel.textContent = "No definido en .env/Render";
+                    if (tgChatLabel) tgChatLabel.textContent = "No definido en .env/Render";
+                    if (tgGuideBox) tgGuideBox.style.display = "block";
+                }
+            }
+
+            // 2. Estado Scanner
+            if (scannerStatusBadge) {
+                if (data.is_running) {
+                    scannerStatusBadge.textContent = "🟢 En Ejecución";
+                    scannerStatusBadge.className = "badge-status status-online";
+                    if (btnScannerToggle) {
+                        btnScannerToggle.textContent = "⏸️ Pausar Scanner";
+                        btnScannerToggle.style.background = "rgba(239, 68, 68, 0.2)";
+                        btnScannerToggle.style.color = "#F87171";
+                        btnScannerToggle.style.borderColor = "rgba(239, 68, 68, 0.4)";
+                    }
+                } else {
+                    scannerStatusBadge.textContent = "⏸️ En Pausa";
+                    scannerStatusBadge.className = "badge-status status-offline";
+                    if (btnScannerToggle) {
+                        btnScannerToggle.textContent = "▶️ Iniciar Scanner";
+                        btnScannerToggle.style.background = "var(--accent-blue)";
+                        btnScannerToggle.style.color = "#fff";
+                        btnScannerToggle.style.borderColor = "transparent";
+                    }
+                }
+            }
+
+            // 3. Métricas
+            if (scannerMetricCycles) scannerMetricCycles.textContent = data.total_scans_completed || 0;
+            if (scannerMetricDeals) scannerMetricDeals.textContent = data.total_deals_notified || 0;
+
+            if (scannerLastScan) {
+                if (data.last_scan_time) {
+                    const d = new Date(data.last_scan_time);
+                    scannerLastScan.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    scannerLastScan.textContent = "Nunca";
+                }
+            }
+
+            if (scannerNextScan) {
+                if (data.is_running && data.next_scan_time) {
+                    const d = new Date(data.next_scan_time);
+                    scannerNextScan.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    scannerNextScan.textContent = data.is_running ? "Calculando..." : "En pausa";
+                }
+            }
+
+            // 4. Formulario de Reglas (solo si no está siendo editado activamente)
+            if (document.activeElement !== cfgKeywords) {
+                if (cfgInterval) cfgInterval.value = data.interval_minutes || 20;
+                if (cfgMinScore) cfgMinScore.value = data.min_score || 8.0;
+                if (cfgMinSavings) cfgMinSavings.value = data.min_savings || 40;
+                if (cfgKeywords && data.keywords) {
+                    cfgKeywords.value = data.keywords.join(", ");
+                }
+            }
+
+            // 5. Historial de Ciclos
+            renderScannerHistory(data.scan_history || []);
+
+        } catch (err) {
+            console.error("Error al cargar estado del scanner:", err);
+        }
+    }
+
+    function renderScannerHistory(history) {
+        if (!scannerHistoryBody) return;
+        if (!history || history.length === 0) {
+            scannerHistoryBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                        Aún no se han completado ciclos de escaneo. Pulsa "⚡ Escanear Ahora" para lanzar el primero.
+                    </td>
+                </tr>
+            `;
+            if (scannerHistoryCount) scannerHistoryCount.textContent = "0 ciclos registrados";
+            return;
+        }
+
+        if (scannerHistoryCount) scannerHistoryCount.textContent = `${history.length} ciclos recientes`;
+
+        const rows = history.slice().reverse().map(c => {
+            const dateStr = c.timestamp ? new Date(c.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "N/A";
+            const duration = c.duration_s ? `${c.duration_s}s` : "-";
+            const listings = c.listings || 0;
+            const deals = c.deals || 0;
+            const alerts = c.alerts || 0;
+            const badgeClass = deals > 0 ? "status-online" : "status-emulated";
+            const badgeText = deals > 0 ? `🔥 ${deals} Chollos` : "Sin chollos";
+
+            return `
+                <tr>
+                    <td><strong>${dateStr}</strong></td>
+                    <td style="color: var(--text-muted);">${duration}</td>
+                    <td>${listings}</td>
+                    <td><span class="badge-status ${badgeClass}">${badgeText}</span></td>
+                    <td><strong style="color: #10B981;">${alerts} enviadas</strong></td>
+                    <td><span class="badge-status status-online">Completado</span></td>
+                </tr>
+            `;
+        }).join("");
+
+        scannerHistoryBody.innerHTML = rows;
+    }
+
+    // Botón Recargar Estado
+    if (btnScannerRefresh) {
+        btnScannerRefresh.addEventListener("click", () => {
+            btnScannerRefresh.textContent = "⏳ Cargando...";
+            loadScannerStatus().finally(() => {
+                setTimeout(() => btnScannerRefresh.textContent = "🔄 Actualizar Estado", 800);
+            });
+        });
+    }
+
+    // Botón Probar Notificación Telegram
+    if (btnTestTelegram) {
+        btnTestTelegram.addEventListener("click", async () => {
+            const token = sessionStorage.getItem("admin_token");
+            if (!token) return;
+
+            btnTestTelegram.disabled = true;
+            btnTestTelegram.textContent = "📨 Enviando a Telegram...";
+            if (tgTestFeedback) {
+                tgTestFeedback.style.display = "none";
+            }
+
+            try {
+                const res = await fetch("/api/admin/scanner/test-telegram", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                const data = await res.json();
+
+                if (tgTestFeedback) {
+                    tgTestFeedback.style.display = "block";
+                    if (res.ok) {
+                        tgTestFeedback.style.background = "rgba(16, 185, 129, 0.15)";
+                        tgTestFeedback.style.color = "#34D399";
+                        tgTestFeedback.style.border = "1px solid rgba(16, 185, 129, 0.3)";
+                        tgTestFeedback.textContent = data.message || "✅ ¡Mensaje recibido en Telegram!";
+                    } else {
+                        tgTestFeedback.style.background = "rgba(239, 68, 68, 0.15)";
+                        tgTestFeedback.style.color = "#F87171";
+                        tgTestFeedback.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+                        tgTestFeedback.textContent = data.detail || "❌ Error al enviar mensaje.";
+                    }
+                }
+            } catch (err) {
+                if (tgTestFeedback) {
+                    tgTestFeedback.style.display = "block";
+                    tgTestFeedback.style.background = "rgba(239, 68, 68, 0.15)";
+                    tgTestFeedback.style.color = "#F87171";
+                    tgTestFeedback.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+                    tgTestFeedback.textContent = "Error de conexión al probar Telegram.";
+                }
+            } finally {
+                btnTestTelegram.disabled = false;
+                btnTestTelegram.textContent = "🚀 Enviar Notificación de Prueba";
+            }
+        });
+    }
+
+    // Botón Toggle Iniciar/Pausar Scanner
+    if (btnScannerToggle) {
+        btnScannerToggle.addEventListener("click", async () => {
+            const token = sessionStorage.getItem("admin_token");
+            if (!token) return;
+
+            const isStarting = btnScannerToggle.textContent.includes("Iniciar");
+            const endpoint = isStarting ? "/api/admin/scanner/start" : "/api/admin/scanner/stop";
+
+            btnScannerToggle.disabled = true;
+            btnScannerToggle.textContent = "⏳ Procesando...";
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    loadScannerStatus();
+                } else {
+                    alert("Error al cambiar estado del scanner.");
+                }
+            } catch (err) {
+                alert("Error de conexión.");
+            } finally {
+                btnScannerToggle.disabled = false;
+            }
+        });
+    }
+
+    // Botón Escaneo Inmediato Manual
+    if (btnScannerRunOnce) {
+        btnScannerRunOnce.addEventListener("click", async () => {
+            const token = sessionStorage.getItem("admin_token");
+            if (!token) return;
+
+            btnScannerRunOnce.disabled = true;
+            btnScannerRunOnce.textContent = "⏳ Escaneando en background...";
+
+            try {
+                const res = await fetch("/api/admin/scanner/run-once", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (scannerActionFeedback) {
+                    scannerActionFeedback.style.display = "block";
+                    scannerActionFeedback.style.background = "rgba(59, 130, 246, 0.15)";
+                    scannerActionFeedback.style.color = "#60A5FA";
+                    scannerActionFeedback.style.border = "1px solid rgba(59, 130, 246, 0.3)";
+                    scannerActionFeedback.textContent = "⚡ Ciclo lanzado. Si hay chollos te llegarán por Telegram. Recargando estado...";
+                }
+
+                // Poll de estado tras 5 y 15 segundos
+                setTimeout(loadScannerStatus, 4000);
+                setTimeout(loadScannerStatus, 12000);
+
+            } catch (err) {
+                alert("Error al lanzar escaneo.");
+            } finally {
+                setTimeout(() => {
+                    btnScannerRunOnce.disabled = false;
+                    btnScannerRunOnce.textContent = "⚡ Escanear Ahora";
+                }, 3000);
+            }
+        });
+    }
+
+    // Formulario de Configuración del Scanner
+    if (scannerConfigForm) {
+        scannerConfigForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const token = sessionStorage.getItem("admin_token");
+            if (!token) return;
+
+            const kwList = cfgKeywords.value.split(",").map(s => s.strip ? s.strip() : s.trim()).filter(Boolean);
+
+            const payload = {
+                interval_minutes: parseInt(cfgInterval.value, 10),
+                min_score: parseFloat(cfgMinScore.value),
+                min_savings: parseFloat(cfgMinSavings.value),
+                keywords: kwList
+            };
+
+            const btnSave = scannerConfigForm.querySelector("button[type='submit']");
+            if (btnSave) {
+                btnSave.disabled = true;
+                btnSave.textContent = "💾 Guardando...";
+            }
+
+            try {
+                const res = await fetch("/api/admin/scanner/config", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    if (cfgFeedback) {
+                        cfgFeedback.style.display = "block";
+                        cfgFeedback.style.background = "rgba(16, 185, 129, 0.15)";
+                        cfgFeedback.style.color = "#34D399";
+                        cfgFeedback.style.border = "1px solid rgba(16, 185, 129, 0.3)";
+                        cfgFeedback.textContent = "✅ Reglas y productos actualizados correctamente en tiempo real.";
+                        setTimeout(() => cfgFeedback.style.display = "none", 4000);
+                    }
+                    loadScannerStatus();
+                } else {
+                    alert("No se pudo guardar la configuración.");
+                }
+            } catch (err) {
+                alert("Error de conexión.");
+            } finally {
+                if (btnSave) {
+                    btnSave.disabled = false;
+                    btnSave.textContent = "💾 Guardar y Aplicar Reglas";
+                }
+            }
+        });
+    }
 });
+
