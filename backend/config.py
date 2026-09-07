@@ -51,3 +51,6 @@ AUTO_SCAN_KEYWORDS = [
         "PlayStation 5,iPhone 13 128GB,iPhone 14 128GB,Samsung Galaxy S25,Samsung Galaxy S24,Nintendo Switch OLED,RTX 4070,MacBook Air M1,Steam Deck"
     ).split(",") if kw.strip()
 ]
+
+# Token de seguridad para disparadores periódicos externos (Cron)
+CRON_SECRET_TOKEN = os.getenv("CRON_SECRET_TOKEN", "").strip() or "GangaCheckCron2026!"

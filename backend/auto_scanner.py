@@ -79,7 +79,7 @@ class AutoScanner:
         if min_savings is not None:
             self.min_savings = max(0.0, min_savings)
         if interval_minutes is not None:
-            self.interval_minutes = max(5, min(120, interval_minutes))
+            self.interval_minutes = max(5, min(1440, interval_minutes))
 
         print(f"[AutoScanner] Config actualizada: {len(self.keywords)} keywords, "
               f"min_score={self.min_score}, min_savings={self.min_savings}€, "

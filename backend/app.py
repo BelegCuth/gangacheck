@@ -3,6 +3,7 @@ import secrets
 from pathlib import Path
 from typing import Optional, List
 from contextlib import asynccontextmanager
+from datetime import datetime
 import threading
 
 from fastapi import FastAPI, HTTPException, Header
@@ -14,7 +15,8 @@ from pydantic import BaseModel, HttpUrl
 from config import (
     HOST, PORT, BASE_DIR, ALLOWED_ORIGINS,
     ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_SECRET_KEY,
-    AUTO_SCAN_ENABLED, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+    AUTO_SCAN_ENABLED, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+    CRON_SECRET_TOKEN
 )
 from database import (
     init_db, save_scan, get_recent_scans, get_all_scans_admin, get_admin_stats,
@@ -352,6 +354,31 @@ async def admin_test_telegram(req: Optional[TestTelegramRequest] = None, authori
     if not sent:
         raise HTTPException(status_code=500, detail="Error al enviar mensaje a Telegram. Verifica que el bot tenga permisos y el Chat ID sea correcto.")
     return {"success": True, "message": "✅ Mensaje de prueba enviado exitosamente a tu Telegram."}
+
+# --- WEBHOOK EXTERNO PROGRAMADO (CRON JOBS CADA 4 HORAS) ---
+
+@app.get("/api/cron/harvest")
+@app.post("/api/cron/harvest")
+async def cron_harvest_trigger(token: Optional[str] = None):
+    """
+    Endpoint para disparadores automáticos externos (cron-job.org, GitHub Actions, UptimeRobot).
+    Despierta el servidor si está dormido en Render y lanza una descarga y análisis de chollos frescos en background.
+    """
+    if token != CRON_SECRET_TOKEN and token != ADMIN_SECRET_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado. Se requiere el parámetro ?token=... con el CRON_SECRET_TOKEN configurado."
+        )
+
+    # Lanzar escaneo en background para responder de inmediato (evita timeout HTTP del cron)
+    threading.Thread(target=scanner_instance.run_once, daemon=True).start()
+
+    return {
+        "success": True,
+        "message": "Ciclo periódico de recolección y análisis iniciado correctamente en background.",
+        "keywords_count": len(scanner_instance.keywords),
+        "timestamp": datetime.now().isoformat()
+    }
 
 # --- SERVIR ARCHIVOS ESTÁTICOS Y PÁGINAS DEL FRONTEND ---
 def get_frontend_file(filename: str) -> Path:
