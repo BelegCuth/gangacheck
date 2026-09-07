@@ -87,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const harvesterKeyword = document.getElementById("harvester-keyword");
     const harvesterPlatform = document.getElementById("harvester-platform");
     const harvesterLimit = document.getElementById("harvester-limit");
-    const harvesterOnlySpain = document.getElementById("harvester-only-spain");
     const btnRunHarvest = document.getElementById("btn-run-harvest");
     const harvesterLoading = document.getElementById("harvester-loading");
     const harvesterResults = document.getElementById("harvester-results");
@@ -813,12 +812,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    keyword,
-                    platform,
-                    limit,
-                    only_spain: harvesterOnlySpain ? harvesterOnlySpain.checked : true
-                })
+                body: JSON.stringify({ keyword, platform, limit })
             });
 
             const data = await res.json();

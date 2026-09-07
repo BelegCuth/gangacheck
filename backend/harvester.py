@@ -66,10 +66,10 @@ class MarketHarvester:
     _vinted_user_country_cache: Dict[int, str] = {}
 
     @classmethod
-    def fetch_vinted(cls, keyword: str, limit: int = 40, only_spain: bool = True) -> List[Dict[str, Any]]:
+    def fetch_vinted(cls, keyword: str, limit: int = 40) -> List[Dict[str, Any]]:
         """
         Consulta la API pública de Vinted para obtener anuncios reales con fotos y precio.
-        Por defecto, filtra estrictamente para admitir SOLO anuncios de vendedores en España.
+        Filtra OBLIGATORIA Y NATIVAMENTE por detrás para admitir ÚNICAMENTE vendedores en España.
         """
         listings = []
         headers = {
@@ -91,7 +91,7 @@ class MarketHarvester:
             # 2. Consultar catálogo
             params = {
                 "search_text": keyword,
-                "per_page": min(limit * 2 if only_spain else limit, 60),
+                "per_page": min(limit * 2, 60),
                 "order": "newest_first"
             }
             resp = session.get(cls.VINTED_API, params=params, headers=headers, timeout=10)
@@ -135,8 +135,8 @@ class MarketHarvester:
                     seller_reviews = int(user_obj.get("feedback_count", 0) or user_obj.get("feedback_reputation", 0) or 0)
                     user_id = user_obj.get("id")
 
-                    # 3. FILTRO ESPAÑA: Comprobar país del vendedor
-                    if only_spain and user_id:
+                    # 3. FILTRO ESPAÑA ESTRICTO POR DETRÁS: Comprobar país del vendedor
+                    if user_id:
                         country_title = cls._vinted_user_country_cache.get(user_id)
                         if not country_title:
                             try:
@@ -437,16 +437,16 @@ class MarketHarvester:
         return listings
 
     @classmethod
-    def harvest_and_save(cls, keyword: str, platform: str = "all", limit: int = 40, only_spain: bool = True) -> Dict[str, Any]:
+    def harvest_and_save(cls, keyword: str, platform: str = "all", limit: int = 40) -> Dict[str, Any]:
         """
         Flujo completo: rastreo en vivo, limpieza de ruido, cálculo estadístico y guardado en BBDD.
-        Filtra por defecto vendedores exclusivamente ubicados en España.
+        Filtra OBLIGATORIA Y NATIVAMENTE por detrás para admitir ÚNICAMENTE vendedores en España y productos reales.
         """
         raw_results = []
         kw_clean = keyword.strip()
 
         if platform in ("vinted", "all"):
-            raw_results.extend(cls.fetch_vinted(kw_clean, limit=limit, only_spain=only_spain))
+            raw_results.extend(cls.fetch_vinted(kw_clean, limit=limit))
 
         if platform in ("milanuncios", "all"):
             raw_results.extend(cls.fetch_milanuncios(kw_clean, limit=limit))

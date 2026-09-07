@@ -186,10 +186,64 @@ def init_db():
         except Exception as e:
             print(f"[Supabase Sync] Aviso: {e}")
 
+# Filtro estricto invisible en backend: fundas, accesorios, cajas vacías y anuncios no españoles
+GATEKEEPER_NOISE = [
+    "para piezas", "despiece", "caja vacia", "caja vacía", "solo caja", "solo la caja",
+    "roto", "rota", "averiado", "averiada", "no funciona", "no enciende",
+    "bloqueado", "bloqueada", "icloud", "para reparar", "defectuoso",
+    "defectuosa", "pantalla rota", "se busca", "compro", "cambio por",
+    "funda", "fundas", "carcasa", "carcasas", "cristal templado", "protector de pantalla",
+    "protector pantalla", "protector camara", "protector cámara", "vidrio templado",
+    "cordon", "cordón", "colgante", "correa", "skin", "pegatina", "pegatinas",
+    "cable", "cargador", "adaptador", "solo cargador", "cargador original solo",
+    "coque", "coques", "housse", "housses", "etui", "étui", "étuis", "verre trempe", "verre trempé",
+    "film protecteur", "chargeur", "boite vide", "boîte vide", "seule boîte", "pour pièces",
+    "pour pieces", "custodia", "custodie", "cover", "pellicola", "vetro temperato", "scatola vuota",
+    "solo scatola", "caricatore", "cavo", "per parti", "non funzionante",
+    "capa", "capas", "caixa vazia", "case", "cases", "phone case", "back cover",
+    "screen protector", "empty box", "box only", "hoesje", "lees beschrijving"
+]
 
+def is_clean_spain_item(item: Dict[str, Any]) -> bool:
+    """
+    Filtro de seguridad en backend: garantiza que NINGÚN anuncio no deseado
+    (fundas, accesorios, cajas o productos fuera de España) penetre en la BBDD.
+    Se ejecuta internamente de forma transparente sin intervención del usuario.
+    """
+    title = (item.get("title") or "").lower()
+    price = float(item.get("price", 0.0))
+    platform = (item.get("platform") or "").lower()
+    keyword = (item.get("keyword") or item.get("normalized_product") or "").lower()
+    country = (item.get("country") or "").lower()
+
+    # 1. Filtro precio absurdo
+    if price < 5.0 or price > 20000.0:
+        return False
+
+    # 2. Filtro palabras prohibidas (fundas, carcasas, etc.)
+    if any(nw in title for nw in GATEKEEPER_NOISE):
+        return False
+
+    # 3. Filtro suelo de precio en electrónica de valor (elimina fundas encubiertas)
+    is_high_tech = any(t in keyword or t in title for t in [
+        "iphone", "samsung", "galaxy", "s24", "s25", "s23",
+        "ps5", "playstation", "switch", "macbook", "rtx", "ipad", "steam deck"
+    ])
+    if is_high_tech and price < 35.0:
+        return False
+
+    # 4. En Vinted: solo vendedores de España
+    if platform == "vinted" and country and country not in ("españa", "spain", "es"):
+        return False
+
+    return True
 
 def save_scan(data: Dict[str, Any]) -> int:
     """Guarda un análisis en Supabase (si está configurado) o en SQLite."""
+    # Validación estricta interna: si es funda o no es de España, rechazar
+    if not is_clean_spain_item(data):
+        return 0
+
     # 1. Si Supabase está activo
     if supabase_client:
         try:
@@ -249,8 +303,11 @@ def save_scan(data: Dict[str, Any]) -> int:
     conn.close()
     return scan_id
 
-def save_raw_listing(item: Dict[str, Any]):
+def save_raw_listing(item: Dict[str, Any]) -> bool:
     """Guarda un anuncio en crudo para engordar el histórico de datos."""
+    # Validación estricta interna: si es funda o no es de España, rechazar
+    if not is_clean_spain_item(item):
+        return False
     img_url = item.get("image_url") or item.get("image") or ""
     payload = {
         "id": str(item.get("id")),
