@@ -16,13 +16,24 @@ def is_telegram_configured() -> bool:
     return bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
 
 
+def _safe_log(text: str):
+    """Imprime mensajes de forma segura evitando errores de codificación en consolas Windows."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        try:
+            print(text.encode("ascii", errors="replace").decode("ascii"))
+        except Exception:
+            pass
+
+
 def send_telegram(message: str, parse_mode: str = "HTML") -> bool:
     """
     Envía un mensaje al chat de Telegram configurado.
     Usa la API HTTP directa — sin librerías externas.
     """
     if not is_telegram_configured():
-        print("[Notifier] Telegram no configurado (falta TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID).")
+        _safe_log("[Notifier] Telegram no configurado (falta TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID).")
         return False
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -38,17 +49,17 @@ def send_telegram(message: str, parse_mode: str = "HTML") -> bool:
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
         res = urllib.request.urlopen(req, timeout=10)
         if res.status == 200:
-            print(f"[Notifier] ✅ Mensaje enviado a Telegram (chat {TELEGRAM_CHAT_ID}).")
+            _safe_log(f"[Notifier] ✅ Mensaje enviado a Telegram (chat {TELEGRAM_CHAT_ID}).")
             return True
         else:
-            print(f"[Notifier] ⚠️ Telegram respondió con código {res.status}.")
+            _safe_log(f"[Notifier] ⚠️ Telegram respondió con código {res.status}.")
             return False
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        print(f"[Notifier] ❌ Error HTTP {e.code} al enviar a Telegram: {body}")
+        _safe_log(f"[Notifier] ❌ Error HTTP {e.code} al enviar a Telegram: {body}")
         return False
     except Exception as e:
-        print(f"[Notifier] ❌ Error al enviar a Telegram: {e}")
+        _safe_log(f"[Notifier] ❌ Error al enviar a Telegram: {e}")
         return False
 
 
